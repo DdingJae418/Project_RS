@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "Character/RSCharacterPlayer.h"
@@ -7,62 +7,26 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
+#include "RSCharacterControlData.h"
 
 ARSCharacterPlayer::ARSCharacterPlayer()
 {
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.f;
 	CameraBoom->bUsePawnControlRotation = true;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
-	// Mesh
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> WarriorMeshRef(TEXT("/Script/Engine.SkeletalMesh'/Game/WastelandWarrior/meshes/W_warrior_ver1_SK.W_warrior_ver1_SK'"));
-	if (WarriorMeshRef.Object)
-	{
-		GetMesh()->SetSkeletalMesh(WarriorMeshRef.Object);
-	}
-
-	// Input
-	static ConstructorHelpers::FObjectFinder<UInputMappingContext> InutMappingContextRef(TEXT("/Script/EnhancedInput.InputMappingContext'/Game/Project_RS/Input/IMC_Default.IMC_Default'"));
-	if (InutMappingContextRef.Object)
-	{
-		DefaultMappingContext = InutMappingContextRef.Object;
-	}
-
-	static ConstructorHelpers::FObjectFinder<UInputAction> InputActionJumpRef(TEXT("/Script/EnhancedInput.InputAction'/Game/Project_RS/Input/Actions/IA_Jump.IA_Jump'"));
-	if (InputActionJumpRef.Object)
-	{
-		JumpAction = InputActionJumpRef.Object;
-	}
-
-	static ConstructorHelpers::FObjectFinder<UInputAction> InputActionMoveRef(TEXT("/Script/EnhancedInput.InputAction'/Game/Project_RS/Input/Actions/IA_Move.IA_Move'"));
-	if (InputActionMoveRef.Object)
-	{
-		MoveAction = InputActionMoveRef.Object;
-	}
-
-	static ConstructorHelpers::FObjectFinder<UInputAction> InputActionLookRef(TEXT("/Script/EnhancedInput.InputAction'/Game/Project_RS/Input/Actions/IA_Look.IA_Look'"));
-	if (InputActionLookRef.Object)
-	{
-		LookAction = InputActionLookRef.Object;
-	}
+	CurrentCharacterControlType = ECharacterControlType::Shoulder;
 }
 
 void ARSCharacterPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (APlayerController* PlayerController = CastChecked<APlayerController>(GetController()))
-	{
-		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-		{
-			Subsystem->AddMappingContext(DefaultMappingContext, 0);
-		}
-	}
+	SetCharacterControl(ECharacterControlType::Shoulder);
 }
 
 void ARSCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -71,11 +35,60 @@ void ARSCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-	EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::Move);
-	EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::Look);
+	EnhancedInputComponent->BindAction(ChangeControlAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::ChangeCharacterControl);
+	EnhancedInputComponent->BindAction(ShoulderMoveAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::ShoulderMove);
+	EnhancedInputComponent->BindAction(ShoulderLookAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::ShoulderLook);
+	EnhancedInputComponent->BindAction(AimingMoveAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::AimingMove);
+	EnhancedInputComponent->BindAction(AimingLookAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::AimingLook);
 }
 
-void ARSCharacterPlayer::Move(const FInputActionValue& Value)
+void ARSCharacterPlayer::ChangeCharacterControl()
+{
+	if (ECharacterControlType::Shoulder == CurrentCharacterControlType)
+	{
+		SetCharacterControl(ECharacterControlType::Aiming);
+	}
+	else if (ECharacterControlType::Aiming == CurrentCharacterControlType)
+	{
+		SetCharacterControl(ECharacterControlType::Shoulder);
+	}
+}
+
+void ARSCharacterPlayer::SetCharacterControl(ECharacterControlType NewCharacterControlType)
+{
+	URSCharacterControlData* NewCharacterControl = CharacterControlManager[NewCharacterControlType];
+	check(NewCharacterControl);
+
+	SetCharacterControlData(NewCharacterControl);
+
+	if (APlayerController* PlayerController = CastChecked<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			Subsystem->ClearAllMappings();
+			UInputMappingContext* NewMappingContext = NewCharacterControl->InputMappingContext;
+			Subsystem->AddMappingContext(NewMappingContext, 0);
+		}
+	}
+	
+	CurrentCharacterControlType = NewCharacterControlType;
+}
+
+void ARSCharacterPlayer::SetCharacterControlData(const class URSCharacterControlData* CharacterControlData)
+{
+	Super::SetCharacterControlData(CharacterControlData);
+
+	CameraBoom->TargetArmLength = CharacterControlData->TargetArmLength;
+	CameraBoom->SetRelativeRotation(CharacterControlData->RelativeRotation);
+	CameraBoom->bUsePawnControlRotation = CharacterControlData->bUsePawnControlRotation;
+	CameraBoom->bInheritPitch = CharacterControlData->bInheritPitch;
+	CameraBoom->bInheritYaw = CharacterControlData->bInheritYaw;
+	CameraBoom->bInheritRoll = CharacterControlData->bInheritRoll;
+	CameraBoom->bDoCollisionTest = CharacterControlData->bDoCollisionTest;
+	FollowCamera->SetRelativeLocation(CharacterControlData->RelativeLocation);
+}
+
+void ARSCharacterPlayer::ShoulderMove(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
@@ -89,7 +102,7 @@ void ARSCharacterPlayer::Move(const FInputActionValue& Value)
 	AddMovementInput(RightDirection, MovementVector.Y);
 }
 
-void ARSCharacterPlayer::Look(const FInputActionValue& Value)
+void ARSCharacterPlayer::ShoulderLook(const FInputActionValue& Value)
 {
 	FVector2D LookAxisVector = Value.Get<FVector2D>();
 
@@ -97,3 +110,18 @@ void ARSCharacterPlayer::Look(const FInputActionValue& Value)
 	AddControllerPitchInput(LookAxisVector.Y);
 }
 
+void ARSCharacterPlayer::AimingMove(const FInputActionValue& Value)
+{
+	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	AddMovementInput(GetActorForwardVector(), MovementVector.X);
+	AddMovementInput(GetActorRightVector(), MovementVector.Y);
+}
+
+void ARSCharacterPlayer::AimingLook(const FInputActionValue& Value)
+{
+	FVector2D LookAxisVector = Value.Get<FVector2D>();
+
+	AddControllerYawInput(LookAxisVector.X);
+	AddControllerPitchInput(LookAxisVector.Y);
+}

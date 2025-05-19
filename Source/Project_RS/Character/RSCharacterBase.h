@@ -6,12 +6,24 @@
 #include "GameFramework/Character.h"
 #include "RSCharacterBase.generated.h"
 
+UENUM()
+enum class ECharacterControlType : uint8 
+{
+	Shoulder,
+	Aiming
+};
+
 UCLASS()
 class PROJECT_RS_API ARSCharacterBase : public ACharacter
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
 	ARSCharacterBase();
+
+protected:
+	virtual void SetCharacterControlData(const class URSCharacterControlData* ControlData);
+
+	UPROPERTY(EditAnywhere, Category = CharacterControl, Meta = (AllowPrivateAccess = "true"))
+	TMap<ECharacterControlType, class URSCharacterControlData*> CharacterControlManager;
 };

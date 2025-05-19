@@ -5,10 +5,10 @@
 
 ARSGameMode::ARSGameMode()
 {
-	static ConstructorHelpers::FClassFinder<APawn> WarriorBPClassRef(TEXT("/Script/Project_RS.RSCharacterPlayer"));
-	if (WarriorBPClassRef.Class)
+	static ConstructorHelpers::FClassFinder<APawn> PlayerBPClassRef(TEXT("/Script/Engine.Blueprint'/Game/Project_RS/Blueprint/BP_CharacterPlayer.BP_CharacterPlayer_C'"));
+	if (PlayerBPClassRef.Class)
 	{
-		DefaultPawnClass = WarriorBPClassRef.Class;
+		DefaultPawnClass = PlayerBPClassRef.Class;
 	}
 	else
 	{

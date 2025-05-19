@@ -20,17 +20,3 @@ ARSOldKey::ARSOldKey()
 	}
 }
 
-// Called when the game starts or when spawned
-void ARSOldKey::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
-
-// Called every frame
-void ARSOldKey::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-
