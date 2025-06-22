@@ -36,9 +36,6 @@ public:
 	float TargetArmLength;
 
 	UPROPERTY(EditAnywhere, Category = SpringArm)
-	FRotator RelativeRotation;
-
-	UPROPERTY(EditAnywhere, Category = SpringArm)
 	uint32 bUsePawnControlRotation : 1;
 
 	UPROPERTY(EditAnywhere, Category = SpringArm)
@@ -55,4 +52,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, Category = Camera)
 	FVector RelativeLocation;
+
+	UPROPERTY(EditAnywhere, Category = Camera)
+	FRotator RelativeRotation;
 };

@@ -35,17 +35,20 @@ protected:
 	float GroundSpeed;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Character)
-	uint8 bIsIdle : 1;
+	float Direction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Character)
 	float MovingThreshold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Character)
+	float JumpingThreshold;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Character)
+	uint8 bIsIdle : 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Character)
 	uint8 bIsFalling : 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Character)
 	uint8 bIsJumping : 1;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Character)
-	float JumpingThreshold;
 };

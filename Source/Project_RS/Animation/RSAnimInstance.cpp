@@ -26,12 +26,13 @@ void URSAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
 
-	if (Movement)
+	if (Movement && Owner)
 	{
 		Velocity = Movement->Velocity;
 		GroundSpeed = Velocity.Size2D();
 		bIsIdle = GroundSpeed < MovingThreshold;
 		bIsFalling = Movement->IsFalling();
 		bIsJumping = bIsFalling & (Velocity.Z > JumpingThreshold);
+		Direction = CalculateDirection(Velocity, Owner->GetActorRotation());
 	}
 }

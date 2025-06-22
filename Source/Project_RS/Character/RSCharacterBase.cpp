@@ -5,18 +5,24 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "RSCharacterControlData.h"
+#include "Animation/AnimMontage.h"
+#include "RSAttackActionData.h"
+#include "Physics/RSCollision.h"
+#include "CharacterStat/RSCharacterStatComponent.h"
+#include "UI/RSWidgetComponent.h"
+#include "UI/RSHpBarWidget.h"
 
 // Sets default values
 ARSCharacterBase::ARSCharacterBase()
 {
 	// Pawn
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
-	bUseControllerRotationRoll = false;
+	bUseControllerRotationPitch	= false;
+	bUseControllerRotationYaw	= false;
+	bUseControllerRotationRoll	= false;
 
 	// Capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
-	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
+	GetCapsuleComponent()->SetCollisionProfileName(CPROFILE_RSCAPSULE);
 
 	// Movement
 	GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -32,8 +38,38 @@ ARSCharacterBase::ARSCharacterBase()
 	// Mesh
 	GetMesh()->SetRelativeLocationAndRotation(FVector(0.f, 0.f, -100.f), FRotator(0.f, -90.f, 0.f));
 	GetMesh()->SetAnimationMode(EAnimationMode::AnimationBlueprint);
-	GetMesh()->SetCollisionProfileName(TEXT("CharacterMesh"));
+	GetMesh()->SetCollisionProfileName(TEXT("NoCollision"));
+
+	// Stat Component
+	Stat = CreateDefaultSubobject<URSCharacterStatComponent>(TEXT("Stat"));
+	Stat->OnHpZero.AddUObject(this, &ARSCharacterBase::SetDead);
+
+	// Widget Component
+	HpBar = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> HpBarWidgetRef(TEXT("/Game/Project_RS/UI/WBP_HpBar.WBP_HpBar_C"));
+	if (HpBarWidgetRef.Class)
+	{
+		HpBar->SetWidgetClass(HpBarWidgetRef.Class);
+		HpBar->SetWidgetSpace(EWidgetSpace::Screen);
+		HpBar->SetDrawSize(FVector2D(100.f, 10.f));
+		HpBar->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		HpBar->SetHiddenInGame(true);
+	}
 }
+
+void ARSCharacterBase::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	const FName SocketName = TEXT("headSocket");
+
+	if (GetMesh() && GetMesh()->DoesSocketExist(SocketName))
+	{
+		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, SocketName);
+		HpBar->SetWorldLocation(GetMesh()->GetSocketLocation(SocketName) + FVector(0.0f, 0.0f, 30.0f));
+	}
+}
+
 
 void ARSCharacterBase::SetCharacterControlData(const class URSCharacterControlData* CharacterControlData)
 {
@@ -44,5 +80,113 @@ void ARSCharacterBase::SetCharacterControlData(const class URSCharacterControlDa
 	GetCharacterMovement()->bOrientRotationToMovement = CharacterControlData->bOrientRotationToMovement;
 	GetCharacterMovement()->bUseControllerDesiredRotation = CharacterControlData->bUseControllerDesiredRotation;
 	GetCharacterMovement()->RotationRate = CharacterControlData->RotationRate;
+}
+
+void ARSCharacterBase::ProcessAttackCommand()
+{
+	if (0 == CurrentCombo)
+	{
+		AttackActionBegin();
+		return;
+	}
+
+	if (false == ComboTimerHandle.IsValid())
+	{
+		HasNextAttackCommand = false;
+	}
+	else
+	{
+		HasNextAttackCommand = true;
+	}
+}
+
+void ARSCharacterBase::AttackActionBegin()
+{
+	CurrentCombo = 1;
+
+	const float AttackSpeedRate = 1.0f;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->Montage_Play(AttackActionMontage, AttackSpeedRate);
+
+	FOnMontageEnded EndDelegate;
+	EndDelegate.BindUObject(this, &ARSCharacterBase::AttackActionEnd);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackActionMontage);
+
+	ComboTimerHandle.Invalidate();
+	SetComboCheckTimer();
+}
+
+void ARSCharacterBase::AttackActionEnd(class UAnimMontage* TargetMontage, bool IsProperlyEnded)
+{
+	ensureMsgf(0 != CurrentCombo, TEXT("Current Combo must be greater than 0."));
+
+	CurrentCombo = 0;
+}
+
+void ARSCharacterBase::SetComboCheckTimer()
+{
+	int32 ComboIndex = CurrentCombo - 1;
+	ensureMsgf(AttackActionData->EffectiveFrameCount.IsValidIndex(ComboIndex), TEXT("Invalid combo index : %d"), ComboIndex);
+
+	const float AttackSpeedRate = 1.0f;
+	float ComboEffectiveTime = (AttackActionData->EffectiveFrameCount[ComboIndex] / AttackActionData->FrameRate) / AttackSpeedRate;
+	if (0.0f < ComboEffectiveTime)
+	{
+		GetWorld()->GetTimerManager().SetTimer(ComboTimerHandle, this, &ARSCharacterBase::ComboCheck, ComboEffectiveTime, false);
+	}
+}
+
+void ARSCharacterBase::ComboCheck()
+{
+	ComboTimerHandle.Invalidate();
+	if (HasNextAttackCommand)
+	{
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+		CurrentCombo = (AttackActionData->MaxComboCount == CurrentCombo) ? 1 : CurrentCombo + 1;
+		FName NextSection = *FString::Printf(TEXT("%s%d"), *AttackActionData->MontageSectionNamePrefix, CurrentCombo);
+		AnimInstance->Montage_JumpToSection(NextSection, AttackActionMontage);
+		SetComboCheckTimer();
+		HasNextAttackCommand = false;
+	}
+}
+
+float ARSCharacterBase::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	Stat->ApplyDamage(DamageAmount);
+	if (HpBar->bHiddenInGame && KINDA_SMALL_NUMBER < Stat->GetCurrentHp())
+	{
+		HpBar->SetHiddenInGame(false);
+	}
+
+	return DamageAmount;
+}
+
+void ARSCharacterBase::SetDead()
+{
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+	PlayDeadAnimation();
+	SetActorEnableCollision(false);
+	HpBar->SetHiddenInGame(true);
+}
+
+void ARSCharacterBase::PlayDeadAnimation()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	AnimInstance->StopAllMontages(0.0f);
+	AnimInstance->Montage_Play(DeadMontage, 1.0f);
+}
+
+void ARSCharacterBase::SetupWidget(class URSUserWidget* InUserWidget)
+{
+	URSHpBarWidget* HpBarWidget = Cast<URSHpBarWidget>(InUserWidget);
+	if (HpBarWidget)
+	{
+		HpBarWidget->SetMaxHp(Stat->GetMaxHp());
+		HpBarWidget->UpdateHpBar(Stat->GetCurrentHp());
+		Stat->OnHpChanged.AddUObject(HpBarWidget, &URSHpBarWidget::UpdateHpBar);
+	}
 }
 
