@@ -1,0 +1,3 @@
+﻿Name,MaxHp,Attack,AttackRange,AttackSpeed,MovementSpeed
+Player,100,10,1500,1,400
+Teuthisan,200,20,50,1,300
