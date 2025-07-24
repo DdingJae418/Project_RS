@@ -2,24 +2,20 @@
 
 
 #include "CharacterStat/RSCharacterStatComponent.h"
+#include "GameData/RSGameSingleton.h"
 
 // Sets default values for this component's properties
 URSCharacterStatComponent::URSCharacterStatComponent()
 {
-	MaxHp = 100.0f;
-	CurrentHp = MaxHp;
+	bWantsInitializeComponent = true;
 }
 
-
-// Called when the game starts
-void URSCharacterStatComponent::BeginPlay()
+void URSCharacterStatComponent::SetCharacterStat(ECharacterName InCharacterName)
 {
-	Super::BeginPlay();
+	CharacterStat = URSGameSingleton::Get().GetCharacterStat(InCharacterName);
 
-	SetHp(MaxHp);
-	
+	SetHp(CharacterStat.MaxHp);
 }
-
 
 float URSCharacterStatComponent::ApplyDamage(float InDamage)
 {
@@ -33,7 +29,7 @@ float URSCharacterStatComponent::ApplyDamage(float InDamage)
 
 void URSCharacterStatComponent::SetHp(float NewHp)
 {
-	CurrentHp = FMath::Clamp<float>(NewHp, 0.0f, MaxHp);
+	CurrentHp = FMath::Clamp<float>(NewHp, 0.0f, CharacterStat.MaxHp);
 
 	OnHpChanged.Broadcast(CurrentHp);
 

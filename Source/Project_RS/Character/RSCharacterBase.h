@@ -7,66 +7,107 @@
 #include "Interface/RSWidgetInterface.h"
 #include "RSCharacterBase.generated.h"
 
-UENUM()
+// Forward Declarations
+class UAnimMontage;
+class URSAttackActionData;
+class URSCharacterControlData;
+class URSCharacterStatComponent;
+class URSWidgetComponent;
+class URSUserWidget;
+
+UENUM(BlueprintType)
 enum class ECharacterControlType : uint8 
 {
-	Shoulder,
-	Aiming
+	Shoulder	UMETA(DisplayName = "Shoulder View"),
+	Aiming		UMETA(DisplayName = "Aiming View")
 };
 
-UCLASS()
+/**
+ * Base character class for all characters in the game.
+ * Provides core functionality for combat, stats, and UI integration.
+ */
+UCLASS(Abstract, BlueprintType, Blueprintable)
 class PROJECT_RS_API ARSCharacterBase : public ACharacter, public IRSWidgetInterface
 {
 	GENERATED_BODY()
 
+// ================================================================================================
+// PUBLIC INTERFACE
+// ================================================================================================
 public:
+	// Constructor & Core Overrides
 	ARSCharacterBase();
 	virtual void PostInitializeComponents() override;
 
+	// Combat Interface
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+	virtual void ProcessAttackCommand();
+
+	// Stat Interface
+	UFUNCTION(BlueprintPure, Category = "Stats")
+	FORCEINLINE URSCharacterStatComponent* GetStatComponent() const { return Stat; }
+
+	// UI Interface
+	UFUNCTION(BlueprintPure, Category = "UI")
+	FORCEINLINE URSWidgetComponent* GetHpBarComponent() const { return HpBar; }
+
+
+// ================================================================================================
+// PROTECTED IMPLEMENTATION
+// ================================================================================================
 protected:
-	UPROPERTY(EditAnywhere, Category = CharacterControl)
-	TMap<ECharacterControlType, class URSCharacterControlData*> CharacterControlManager;
+	// ========== Character Control System ==========
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Control", meta = (AllowPrivateAccess = "true"))
+	TMap<ECharacterControlType, TObjectPtr<URSCharacterControlData>> CharacterControlManager;
 
-	virtual void SetCharacterControlData(const class URSCharacterControlData* ControlData);
+	virtual void SetCharacterControlData(const URSCharacterControlData* ControlData);
 
-// Action Section
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
-	TObjectPtr<class UAnimMontage> AttackActionMontage;
+	// ========== Combat System ==========
+	// Combat Data & Assets
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimMontage> AttackActionMontage;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Attack)
-	TObjectPtr<class URSAttackActionData> AttackActionData;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Animation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimMontage> DeadMontage;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Animation)
-	TObjectPtr<class UAnimMontage> DeadMontage;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Data", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<URSAttackActionData> AttackActionData;
 
 
-	void ProcessAttackCommand();
+	// Combat Methods
+	virtual void AttackActionBegin();
+	virtual void AttackActionEnd(UAnimMontage* TargetMontage, bool IsProperlyEnded);
+	virtual void NotifyAttackActionEnd();
+	virtual void SetComboCheckTimer();
+	virtual void ComboCheck();
 
-	void AttackActionBegin();
-	void AttackActionEnd(class UAnimMontage* TargetMontage, bool IsProperlyEnded);
-	void SetComboCheckTimer();
-	void ComboCheck();
-
+	// Damage & Death System
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-
 	virtual void SetDead();
-	void PlayDeadAnimation();
+	virtual void PlayDeadAnimation();
+	float GetDeadEventDelayTime() const { return DeadEventDelayTime_; }
 
-	int32 CurrentCombo = 0;
-	FTimerHandle ComboTimerHandle;
-	bool HasNextAttackCommand = false;
-	float DeadEventDelayTime = 8.0f;
+	// ========== Stat System ==========
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<URSCharacterStatComponent> Stat;
 
-// Stat Section
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Stat, Meta = (AllowPrivateAcess = "true"))
-	TObjectPtr<class URSCharacterStatComponent> Stat;
+	// ========== UI System ==========
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<URSWidgetComponent> HpBar;
 
-// UI Widget Section
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Widget, Meta = (AllowPrivateAcess = "true"))
-	TObjectPtr<class URSWidgetComponent> HpBar;
+	// IRSWidgetInterface Implementation
+	virtual void SetupWidget(UUserWidget* InUserWidget) override;
 
-	virtual void SetupWidget(class URSUserWidget* InUserWidget) override;
+
+// ================================================================================================
+// PRIVATE IMPLEMENTATION
+// ================================================================================================
+private:
+	// ========== Combat Internal State ==========
+	int32	CurrentCombo_			= 0;
+	bool	HasNextAttackCommand_	= false;
+	bool	IsDead_					= false;
+	float	DeadEventDelayTime_		= 8.0f;
+
+	FTimerHandle ComboTimerHandle_;
 };

@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "GameData/RSCharacterStat.h"
+#include "Enums/ECharacterName.h"
 #include "RSCharacterStatComponent.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FOnHpZeroDelegate);
@@ -18,22 +20,20 @@ public:
 	// Sets default values for this component's properties
 	URSCharacterStatComponent();
 
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
-
 
 public:
 	FOnHpZeroDelegate OnHpZero;
 	FOnHpChangedDelegate OnHpChanged;
 
-	FORCEINLINE float GetMaxHp() const { return MaxHp; }
+	void SetCharacterStat(ECharacterName InCharacterName);
+	FORCEINLINE FRSCharacterStat GetCharacterStat() const { return CharacterStat; }
 	FORCEINLINE float GetCurrentHp() const { return CurrentHp; }
 	float ApplyDamage(float InDamage);
+	void RestoreHp(float InHp) { SetHp(CurrentHp + InHp); }
 
 protected:
-	UPROPERTY(VisibleInstanceOnly, Category = Stat)
-	float MaxHp;
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat)
+	FRSCharacterStat CharacterStat;
 
 	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat)
 	float CurrentHp;

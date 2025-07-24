@@ -6,14 +6,18 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
-#include "InputMappingContext.h"
 #include "EnhancedInputComponent.h"
+#include "InputMappingContext.h"
 #include "RSCharacterControlData.h"
 #include "RSAttackActionData.h"
 #include "Physics/RSCollision.h"
 #include "Engine/DamageEvents.h"
 #include "Item/RSItemData.h"
 #include "Item/RSItem.h"
+#include "Item/RSMedicalItemData.h"
+#include "CharacterStat/RSCharacterStatComponent.h"
+#include "Enums/ECharacterName.h"
+#include "UI/RSHUDWidget.h"
 
 const FString GunSpineSocketName	= TEXT("gun_spine");
 const FString GunHandSocketName		= TEXT("gun_hand");
@@ -43,6 +47,13 @@ ARSCharacterPlayer::ARSCharacterPlayer()
 	TakeItemActions_.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpMedicalItem)));
 	TakeItemActions_.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpMoneyItem)));
 	TakeItemActions_.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpStoryItem)));
+}
+
+void ARSCharacterPlayer::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+
+	Stat->SetCharacterStat(ECharacterName::Player);
 }
 
 void ARSCharacterPlayer::BeginPlay()
@@ -215,23 +226,29 @@ void ARSCharacterPlayer::AimingLook(const FInputActionValue& Value)
 
 void ARSCharacterPlayer::Fire()
 {
+	if (CurrentAmmo_ == 0)
+		return;
+
 	ProcessAttackCommand();
 }
 
-void ARSCharacterPlayer::AttackHitCheck()
+void ARSCharacterPlayer::AttackHitCheck_Implementation()
 {
+	CurrentAmmo_--;
+	OnOwningAmmonChanged.Broadcast(CurrentAmmo_);
+
 	FHitResult OutHitResult;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
 	const FVector Start = FollowCamera->GetComponentLocation();
-	const FVector End = Start + FollowCamera->GetForwardVector() * AttackActionData->AttackRange;
+	const FVector End = Start + FollowCamera->GetForwardVector() * Stat->GetCharacterStat().AttackRange;
 	
 	bool HitDetected = GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, CCHANNEL_RSACTION, Params);
 	
 	if (HitDetected)
 	{
 		FDamageEvent DamageEvent;
-		OutHitResult.GetActor()->TakeDamage(AttackActionData->AttackDamage, DamageEvent, GetController(), this);
+		OutHitResult.GetActor()->TakeDamage(Stat->GetCharacterStat().Attack, DamageEvent, GetController(), this);
 	}
 
 #if ENABLE_DRAW_DEBUG
@@ -261,6 +278,24 @@ void ARSCharacterPlayer::LoseItem(class ARSItem* InItem)
 	CurrentItems_.Remove(InItem);
 }
 
+void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
+{
+	Super::SetupWidget(InUserWidget);
+
+	if (URSHUDWidget* InHUDWidget = Cast<URSHUDWidget>(InUserWidget))
+	{
+		InHUDWidget->SetMaxHp(Stat->GetCharacterStat().MaxHp);
+		InHUDWidget->UpdateHpBar(Stat->GetCurrentHp());
+		InHUDWidget->SetMaxAmmo(MaxAmmo_);
+		InHUDWidget->UpdateOwningAmmo(CurrentAmmo_);
+		InHUDWidget->UpdateOwningMoney(CurrentMoney_);
+
+		Stat->OnHpChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateHpBar);
+		OnOwningAmmonChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateOwningAmmo);
+		OnOwningMoneyChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateOwningMoney);
+	}
+}
+
 void ARSCharacterPlayer::TakeItem()
 {
 	if (CurrentItems_.Num() == 0)
@@ -270,7 +305,7 @@ void ARSCharacterPlayer::TakeItem()
 	URSItemData* itemData = item->GetItemData();
 
 	TakeItemActions_[(uint8)itemData->GetType()].ItemDelegate.ExecuteIfBound(itemData);
-	item->ConsumeItem();
+	item->ConsumeItem(); // Automatically call LoseItem() after consuming
 }
 
 void ARSCharacterPlayer::PickUpAmmoItem(class URSItemData* InItemData)
@@ -280,7 +315,10 @@ void ARSCharacterPlayer::PickUpAmmoItem(class URSItemData* InItemData)
 
 void ARSCharacterPlayer::PickUpMedicalItem(class URSItemData* InItemData)
 {
-
+	if (URSMedicalItemData* MedicalItemData = Cast<URSMedicalItemData>(InItemData))
+	{
+		Stat->RestoreHp(MedicalItemData->GetRestoreAmount());
+	}
 }
 
 void ARSCharacterPlayer::PickUpMoneyItem(class URSItemData* InItemData)

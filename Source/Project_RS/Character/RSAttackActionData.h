@@ -17,15 +17,6 @@ class PROJECT_RS_API URSAttackActionData : public UDataAsset
 public:
 	URSAttackActionData();
 
-	UPROPERTY(EditAnywhere, Category = AttackData)
-	float AttackRange;
-
-	UPROPERTY(EditAnywhere, Category = AttackData)
-	float AttackRadius;
-
-	UPROPERTY(EditAnywhere, Category = AttackData)
-	float AttackDamage;
-
 	UPROPERTY(EditAnywhere, Category = ComboData)
 	FString MontageSectionNamePrefix;
 
