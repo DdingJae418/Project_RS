@@ -28,6 +28,6 @@ protected:
 	UPROPERTY()
 	TObjectPtr<class UProgressBar> HpProgressBar;
 
-	UPROPERTY()
+private:
 	float MaxHp;
 };

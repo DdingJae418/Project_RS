@@ -22,5 +22,5 @@ class PROJECT_RS_API IRSWidgetInterface
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	virtual void SetupWidget(class URSUserWidget* InUserWidget) = 0;
+	virtual void SetupWidget(class UUserWidget* InUserWidget) = 0;
 };
