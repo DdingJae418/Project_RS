@@ -14,7 +14,8 @@ class URSAnimationAttackInterface : public UInterface
 };
 
 /**
- * 
+ * Interface for animation-triggered attack functionality.
+ * Allows animation notifies to trigger attack hit checking.
  */
 class PROJECT_RS_API IRSAnimationAttackInterface
 {
@@ -22,5 +23,7 @@ class PROJECT_RS_API IRSAnimationAttackInterface
 
 	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
-	virtual void AttackHitCheck() = 0;
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Combat")
+	void AttackHitCheck();
+	virtual void AttackHitCheck_Implementation() = 0;
 };

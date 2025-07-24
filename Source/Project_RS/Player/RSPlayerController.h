@@ -13,7 +13,17 @@ UCLASS()
 class PROJECT_RS_API ARSPlayerController : public APlayerController
 {
 	GENERATED_BODY()
+
+public:
+	ARSPlayerController();
 	
 protected:
 	virtual void BeginPlay() override;
+
+	// HUD Section
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = HUD)
+	TSubclassOf<class URSHUDWidget> RSHUDWidgetClass;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = HUD)
+	TObjectPtr<class URSHUDWidget> RSHUDWidget;
 };

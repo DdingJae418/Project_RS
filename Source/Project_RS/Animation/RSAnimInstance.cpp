@@ -4,6 +4,7 @@
 #include "Animation/RSAnimInstance.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "KismetAnimationLibrary.h"
 
 URSAnimInstance::URSAnimInstance()
 {
@@ -33,6 +34,6 @@ void URSAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		bIsIdle = GroundSpeed < MovingThreshold;
 		bIsFalling = Movement->IsFalling();
 		bIsJumping = bIsFalling & (Velocity.Z > JumpingThreshold);
-		Direction = CalculateDirection(Velocity, Owner->GetActorRotation());
+		Direction = UKismetAnimationLibrary::CalculateDirection(Velocity, Owner->GetActorRotation());
 	}
 }

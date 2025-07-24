@@ -15,4 +15,9 @@ class PROJECT_RS_API URSMedicalItemData : public URSItemData
 	GENERATED_BODY()
 	
 public:
+	FORCEINLINE float GetRestoreAmount() const { return RestoreAmount; }
+
+private:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Value, meta = (AllowPrivateAccess))
+	float RestoreAmount;
 };

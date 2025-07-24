@@ -75,7 +75,7 @@ void ARSItem::OnTriggerEndOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 	ItemPrompt->SetHiddenInGame(true);
 }
 
-void ARSItem::SetupWidget(class URSUserWidget* InUserWidget)
+void ARSItem::SetupWidget(class UUserWidget* InUserWidget)
 {
 	URSItemPromptWidget* ItemPromptWidget = Cast<URSItemPromptWidget>(InUserWidget);
 	if (ItemPromptWidget)
