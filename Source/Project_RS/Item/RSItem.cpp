@@ -57,6 +57,8 @@ void ARSItem::ConsumeItem()
 
 void ARSItem::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+	UE_LOG(LogTemp, Log, TEXT("%s"), *ItemData->GetName().ToString());
+
 	IRSCharacterItemInterface* ItemUser = Cast<IRSCharacterItemInterface>(OtherActor);
 	if (nullptr == ItemUser)
 		return;
