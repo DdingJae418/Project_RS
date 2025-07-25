@@ -94,12 +94,14 @@ void ARSCharacterPlayer::ChangeCharacterControl()
 	if (ECharacterControlType::Shoulder == CurrentCharacterControlType)
 	{
 		SetCharacterControl(ECharacterControlType::Aiming);
+		ShowAimingUI();
 		bIsAiming_			= true;
 		bIsWeaponEquipped_	= true; // Automatically equip weapon when aiming
 	}
 	else if (ECharacterControlType::Aiming == CurrentCharacterControlType)
 	{
 		SetCharacterControl(ECharacterControlType::Shoulder);
+		HideAimingUI();
 		bIsAiming_ = false;
 	}
 }
@@ -329,5 +331,27 @@ void ARSCharacterPlayer::PickUpMoneyItem(class URSItemData* InItemData)
 void ARSCharacterPlayer::PickUpStoryItem(class URSItemData* InItemData)
 {
 
+}
+
+void ARSCharacterPlayer::ShowAimingUI()
+{
+	checkf(AimingPointWidget, TEXT("AimingPointWidget is not set in ARSCharacterPlayer::ShowAimingUI()"));
+
+	if (false == AimingPointWidget->IsInViewport())
+	{
+		AimingPointWidget->AddToViewport();
+	}
+	else
+	{
+		AimingPointWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+}
+
+void ARSCharacterPlayer::HideAimingUI()
+{
+	checkf(AimingPointWidget, TEXT("AimingPointWidget is not set in ARSCharacterPlayer::HideAimingUI()"));
+	ensureMsgf(AimingPointWidget->IsInViewport(), TEXT("AimingPointWidget is not in viewport in ARSCharacterPlayer::HideAimingUI()"));
+
+	AimingPointWidget->SetVisibility(ESlateVisibility::Hidden);
 }
 

@@ -142,6 +142,10 @@ protected:
 	// IRSAnimationAttackInterface Implementation
 	virtual void AttackHitCheck_Implementation() override;
 
+	// ========== UI System ==========
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<class UUserWidget> AimingPointWidget;
+
 
 // ================================================================================================
 // PRIVATE IMPLEMENTATION
@@ -180,4 +184,8 @@ private:
 	const uint8 MaxAmmo_ = 30;
 	uint8 CurrentAmmo_ = MaxAmmo_;
 	uint32 CurrentMoney_ = 0;
+
+	// ========== UI Internal Methods ==========
+	void ShowAimingUI();
+	void HideAimingUI();
 };
