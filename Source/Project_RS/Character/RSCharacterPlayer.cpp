@@ -15,6 +15,7 @@
 #include "Item/RSItemData.h"
 #include "Item/RSItem.h"
 #include "Item/RSMedicalItemData.h"
+#include "Item/RSMoneyItemData.h"
 #include "CharacterStat/RSCharacterStatComponent.h"
 #include "Enums/ECharacterName.h"
 #include "UI/RSHUDWidget.h"
@@ -325,7 +326,10 @@ void ARSCharacterPlayer::PickUpMedicalItem(class URSItemData* InItemData)
 
 void ARSCharacterPlayer::PickUpMoneyItem(class URSItemData* InItemData)
 {
-
+	if (URSMoneyItemData* MoneyItemData = Cast<URSMoneyItemData>(InItemData))
+	{
+		SetCurrentMoney(CurrentMoney_ + MoneyItemData->GetMoneyValue());
+	}
 }
 
 void ARSCharacterPlayer::PickUpStoryItem(class URSItemData* InItemData)
