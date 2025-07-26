@@ -9,10 +9,13 @@
 #include "UI/RSWidgetComponent.h"
 #include "UI/RSItemPromptWidget.h"
 #include "interface/RSCharacterItemInterface.h"
+#include "Engine/Engine.h"
 
 // Sets default values
 ARSItem::ARSItem()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	
 	Trigger = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
 	Mesh	= CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 
@@ -25,6 +28,23 @@ ARSItem::ARSItem()
 
 	Mesh->SetupAttachment(Trigger);
 	Mesh->SetCollisionProfileName("NoCollision");
+
+	FlickerEffect = CreateDefaultSubobject<URSWidgetComponent>(TEXT("FlickerEffect"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> FlickerWidgetRef(TEXT("/Game/Project_RS/UI/WBP_ItemFlicker.WBP_ItemFlicker_C"));
+	if (FlickerWidgetRef.Class)
+	{
+		FlickerEffect->SetWidgetClass(FlickerWidgetRef.Class);
+		FlickerEffect->SetupAttachment(Trigger);
+		FlickerEffect->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+		FlickerEffect->SetWidgetSpace(EWidgetSpace::Screen);
+		FlickerEffect->SetDrawSize(FVector2D(140.0f, 140.0f));
+		FlickerEffect->SetPivot(FVector2D(0.5f, 0.5f));
+		FlickerEffect->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		FlickerEffect->SetHiddenInGame(true);
+	}
+
+	FlickerTimer = 0.0f;
+	bIsFlickering = false;
 
 	ItemPrompt = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
 	static ConstructorHelpers::FClassFinder<UUserWidget> ItemPromptWidgetRef(TEXT("/Game/Project_RS/UI/WBP_ItemPrompt.WBP_ItemPrompt_C"));
@@ -44,7 +64,16 @@ ARSItem::ARSItem()
 void ARSItem::BeginPlay()
 {
 	Super::BeginPlay();
-	ensureMsgf(ItemData, TEXT("[%s] ItemData °¡ ÇÒ´çµÇÁö ¾Ê¾Ò½À´Ï´Ù."), *GetName());
+	ensureMsgf(ItemData, TEXT("[%s] ItemData ï¿½ï¿½ ï¿½Ò´ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¾Ò½ï¿½ï¿½Ï´ï¿½."), *GetName());
+	
+	FlickerTimer = FMath::RandRange(0.0f, FlickerInterval);
+}
+
+void ARSItem::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	UpdateFlicker(DeltaTime);
 }
 
 
@@ -83,5 +112,42 @@ void ARSItem::SetupWidget(class UUserWidget* InUserWidget)
 	if (ItemPromptWidget)
 	{
 		ItemPromptWidget->SetItemName(ItemData->GetName());
+	}
+}
+
+void ARSItem::StartFlicker()
+{
+	bIsFlickering = true;
+	FlickerTimer = 0.0f;
+}
+
+void ARSItem::UpdateFlicker(float DeltaTime)
+{
+	FlickerTimer += DeltaTime;
+	
+	if (false == bIsFlickering)
+	{
+		if (FlickerTimer >= FlickerInterval)
+		{
+			StartFlicker();
+		}
+	}
+	else
+	{
+		if (FlickerTimer <= FlickerDuration)
+		{
+			float Alpha = FMath::Sin((FlickerTimer / FlickerDuration) * PI);
+			if (FlickerEffect->GetWidget())
+			{
+				FlickerEffect->GetWidget()->SetRenderOpacity(Alpha * MaxOpacity);
+				FlickerEffect->SetHiddenInGame(false);
+			}
+		}
+		else
+		{
+			FlickerEffect->SetHiddenInGame(true);
+			bIsFlickering = false;
+			FlickerTimer = 0.0f;
+		}
 	}
 }

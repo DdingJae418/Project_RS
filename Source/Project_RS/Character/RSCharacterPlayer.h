@@ -181,7 +181,7 @@ private:
 	FOnOwningAmmoChangeDelegate OnOwningAmmonChanged;
 	FOnOwningMoneyChangeDelegate OnOwningMoneyChanged;
 
-	const uint8 MaxAmmo_ = 30;
+	const uint8 MaxAmmo_ = 60;
 	uint8 CurrentAmmo_ = MaxAmmo_;
 	uint32 CurrentMoney_ = 0;
 

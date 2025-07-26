@@ -140,3 +140,10 @@ Character statistics are managed through:
 3. Component-based stat management through `URSCharacterStatComponent`
 
 When adding new characters, update the CSV file and corresponding enum values in `ECharacterName.h`.
+
+## Commit Guidelines
+
+- **IMPORTANT**: Do NOT mention Claude or AI assistance in commit messages
+- Use conventional commit format when appropriate
+- Keep commit messages concise and descriptive
+- Focus on what the change accomplishes, not how it was created
