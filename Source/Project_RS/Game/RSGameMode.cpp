@@ -2,6 +2,9 @@
 
 
 #include "Game/RSGameMode.h"
+#include "Effect/RSEffectManager.h"
+#include "Kismet/GameplayStatics.h"
+
 
 ARSGameMode::ARSGameMode()
 {
@@ -23,5 +26,17 @@ ARSGameMode::ARSGameMode()
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Failed to find the PlayerControllerClass"));
+	}
+}
+
+void ARSGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	EffectManager = NewObject<URSEffectManager>(this);
+
+	if (ACharacter* Player = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0))
+	{
+		EffectManager->Initialize(Player);
 	}
 }

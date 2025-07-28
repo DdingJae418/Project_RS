@@ -16,4 +16,10 @@ class PROJECT_RS_API ARSGameMode : public AGameModeBase
 	
 public:
 	ARSGameMode();
+
+	virtual void BeginPlay() override;
+
+private:
+	UPROPERTY()
+	TObjectPtr<class URSEffectManager> EffectManager;
 };

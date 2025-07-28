@@ -18,6 +18,7 @@ class URSItemData;
 class ARSItem;
 struct FInputActionValue;
 
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHitTargetDelegate, AActor* /*HitTarget*/, const FHitResult&);
 DECLARE_DELEGATE_OneParam(FOnTakeItemDelegate, URSItemData* /*InItemData*/);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnOwningAmmoChangeDelegate, uint8 /*NewAmmo*/);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnOwningMoneyChangeDelegate, uint32 /*NewMoney*/);
@@ -32,6 +33,10 @@ struct FTakeItemDelegateWrapper
 	
 	FOnTakeItemDelegate ItemDelegate;
 };
+
+
+const FString GunSpineSocketName = TEXT("gun_spine");
+const FString GunHandSocketName = TEXT("gun_hand");
 
 /**
  * Player-controlled character class.
@@ -52,11 +57,8 @@ public:
 
 	// Character Control Interface
 	float GetAimingPitch() const;
-
 	bool IsWeaponEquipped() const { return bIsWeaponEquipped_; }
-	
 	bool IsAiming() const { return bIsAiming_; }
-	
 	void AttachWeapon();
 
 	// Item Interface
@@ -70,6 +72,7 @@ public:
 	// UI Interface
 	virtual void SetupWidget(class UUserWidget* InUserWidget) override;
 
+	FOnHitTargetDelegate OnHitTarget;
 
 // ================================================================================================
 // PROTECTED IMPLEMENTATION
@@ -92,11 +95,12 @@ protected:
 
 	void UpdateCameraMovement(float DeltaTime);
 
-	// ========== Weapon System ==========
+	// ========== Combat System ==========
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> Weapon;
 
 	void SetupWeapon();
+	virtual void SetDead() override;
 
 	// ========== Character Control System ==========
 	void ChangeCharacterControl();

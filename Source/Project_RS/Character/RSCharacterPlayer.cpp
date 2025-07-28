@@ -13,16 +13,10 @@
 #include "Physics/RSCollision.h"
 #include "Engine/DamageEvents.h"
 #include "Item/RSItemData.h"
-#include "Item/RSItem.h"
-#include "Item/RSMedicalItemData.h"
-#include "Item/RSMoneyItemData.h"
-#include "Item/RSAmmoItemData.h"
+#include "Item/RSItems.h"
 #include "CharacterStat/RSCharacterStatComponent.h"
 #include "Enums/ECharacterName.h"
 #include "UI/RSHUDWidget.h"
-
-const FString GunSpineSocketName	= TEXT("gun_spine");
-const FString GunHandSocketName		= TEXT("gun_hand");
 
 ARSCharacterPlayer::ARSCharacterPlayer()
 {
@@ -63,6 +57,12 @@ void ARSCharacterPlayer::BeginPlay()
 	Super::BeginPlay();
 
 	SetCharacterControl(ECharacterControlType::Shoulder);
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController)
+	{
+		EnableInput(PlayerController);
+	}
 }
 
 void ARSCharacterPlayer::Tick(float DeltaTime)
@@ -152,6 +152,17 @@ void ARSCharacterPlayer::SetupWeapon()
 	bIsWeaponEquipped_ = !bIsWeaponEquipped_;
 }
 
+void ARSCharacterPlayer::SetDead()
+{
+	Super::SetDead();
+
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+	if (PlayerController)
+	{
+		DisableInput(PlayerController);
+	}
+}
+
 float ARSCharacterPlayer::GetAimingPitch() const
 {
 	float AimingPitch = FRotator::NormalizeAxis(GetControlRotation().Pitch);
@@ -233,14 +244,13 @@ void ARSCharacterPlayer::Fire()
 	if (CurrentAmmo_ == 0)
 		return;
 
+	SetCurrentAmmo(CurrentAmmo_ - 1);
+
 	ProcessAttackCommand();
 }
 
 void ARSCharacterPlayer::AttackHitCheck_Implementation()
 {
-	CurrentAmmo_--;
-	OnOwningAmmonChanged.Broadcast(CurrentAmmo_);
-
 	FHitResult OutHitResult;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
@@ -253,6 +263,8 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 	{
 		FDamageEvent DamageEvent;
 		OutHitResult.GetActor()->TakeDamage(Stat->GetCharacterStat().Attack, DamageEvent, GetController(), this);
+
+		OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
 	}
 
 #if ENABLE_DRAW_DEBUG

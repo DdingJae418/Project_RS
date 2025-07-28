@@ -27,6 +27,12 @@ void ARSCharacterNonPlayer::SetDead()
 {
 	Super::SetDead();
 
+	ARSAIController* RSAIController = Cast<ARSAIController>(GetController());
+	if (RSAIController)
+	{
+		RSAIController->StopAI();
+	}
+
 	FTimerHandle DeadTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(DeadTimerHandle, FTimerDelegate::CreateLambda(
 		[&]()
