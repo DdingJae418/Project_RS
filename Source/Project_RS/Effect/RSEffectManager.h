@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
+#include "Engine/World.h"
 #include "RSEffectManager.generated.h"
 
 /**
@@ -19,6 +20,18 @@ public:
 
 	void Initialize(ACharacter* Character);
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hit Effects")
+	TObjectPtr<class UParticleSystem> DefaultHitEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hit Effects")
+	TObjectPtr<class UParticleSystem> MonsterHitEffect;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Hit Effects")
+	TObjectPtr<class USoundCue> HitSound;
+
 private:
 	void HandleHitEffect(AActor* HitTarget, const FHitResult& HitResult);
+
+	void PlayHitEffectAtLocation(const FVector& Location, const FVector& Normal, UParticleSystem* HitEffect);
+	void PlayHitSound(const FVector& Location);
 };

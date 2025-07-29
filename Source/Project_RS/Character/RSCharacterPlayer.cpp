@@ -267,7 +267,7 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 		OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
 	}
 
-#if ENABLE_DRAW_DEBUG
+#if 0
 
 	FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
 	DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 5.0f, 0, 0.5f);
