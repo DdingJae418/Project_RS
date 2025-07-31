@@ -251,6 +251,8 @@ void ARSCharacterPlayer::Fire()
 
 void ARSCharacterPlayer::AttackHitCheck_Implementation()
 {
+	PlayAttackSound();
+
 	FHitResult OutHitResult;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
@@ -258,7 +260,6 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 	const FVector End = Start + FollowCamera->GetForwardVector() * Stat->GetCharacterStat().AttackRange;
 	
 	bool HitDetected = GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, CCHANNEL_RSACTION, Params);
-	
 	if (HitDetected)
 	{
 		FDamageEvent DamageEvent;
@@ -267,7 +268,7 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 		OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
 	}
 
-#if 0
+#if ENABLE_DRAW_DEBUG
 
 	FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
 	DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 5.0f, 0, 0.5f);
@@ -296,7 +297,6 @@ void ARSCharacterPlayer::LoseItem(class ARSItem* InItem)
 
 void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
 {
-	Super::SetupWidget(InUserWidget);
 
 	if (URSHUDWidget* InHUDWidget = Cast<URSHUDWidget>(InUserWidget))
 	{

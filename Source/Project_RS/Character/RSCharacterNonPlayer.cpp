@@ -9,11 +9,26 @@
 #include "Engine/DamageEvents.h"
 #include "Engine/OverlapResult.h"
 #include "Physics/RSCollision.h"
+#include "UI/RSWidgetComponent.h"
+#include "UI/RSHpBarWidget.h"
+#include "Components/CapsuleComponent.h"
 
 ARSCharacterNonPlayer::ARSCharacterNonPlayer()
 {
 	AIControllerClass = ARSAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+
+	// Widget Component
+	HpBar = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
+	static ConstructorHelpers::FClassFinder<UUserWidget> HpBarWidgetRef(TEXT("/Game/Project_RS/UI/WBP_HpBar.WBP_HpBar_C"));
+	if (HpBarWidgetRef.Class)
+	{
+		HpBar->SetWidgetClass(HpBarWidgetRef.Class);
+		HpBar->SetWidgetSpace(EWidgetSpace::Screen);
+		HpBar->SetDrawSize(FVector2D(100.f, 10.f));
+		HpBar->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		HpBar->SetHiddenInGame(true);
+	}
 }
 
 void ARSCharacterNonPlayer::PostInitializeComponents()
@@ -21,6 +36,7 @@ void ARSCharacterNonPlayer::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	Stat->SetCharacterStat(CharacterName);
+	SetupHpBarComponent();
 }
 
 void ARSCharacterNonPlayer::SetDead()
@@ -32,6 +48,9 @@ void ARSCharacterNonPlayer::SetDead()
 	{
 		RSAIController->StopAI();
 	}
+
+	if (HpBar != nullptr)
+		HpBar->SetHiddenInGame(true);
 
 	FTimerHandle DeadTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(DeadTimerHandle, FTimerDelegate::CreateLambda(
@@ -84,6 +103,8 @@ void ARSCharacterNonPlayer::NotifyAttackActionEnd()
 
 void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
 {
+	PlayAttackSound();
+
 	TArray<FOverlapResult> OutOverlapResults;
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
@@ -118,6 +139,7 @@ void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
 		}
 	}
 
+
 #if ENABLE_DRAW_DEBUG
 	FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
 	
@@ -145,4 +167,44 @@ void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
 		}
 	}
 #endif
+}
+
+float ARSCharacterNonPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (HpBar != nullptr && HpBar->bHiddenInGame && KINDA_SMALL_NUMBER < Stat->GetCurrentHp())
+	{
+		HpBar->SetHiddenInGame(false);
+	}
+
+	return DamageAmount;
+}
+
+void ARSCharacterNonPlayer::SetupWidget(class UUserWidget* InUserWidget)
+{
+	URSHpBarWidget* HpBarWidget = Cast<URSHpBarWidget>(InUserWidget);
+	if (HpBarWidget)
+	{
+		HpBarWidget->SetMaxHp(Stat->GetCharacterStat().MaxHp);
+		HpBarWidget->UpdateHpBar(Stat->GetCurrentHp());
+		Stat->OnHpChanged.AddUObject(HpBarWidget, &URSHpBarWidget::UpdateHpBar);
+	}
+}
+
+void ARSCharacterNonPlayer::SetupHpBarComponent()
+{
+	const FName SocketName = TEXT("headSocket");
+
+	if (GetMesh() && GetMesh()->DoesSocketExist(SocketName))
+	{
+		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, SocketName);
+		HpBar->SetWorldLocation(GetMesh()->GetSocketLocation(SocketName) + FVector(0.0f, 0.0f, 30.0f));
+	}
+	else
+	{
+		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform);
+		FVector CharacterTop = GetActorLocation() + FVector(0.0f, 0.0f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 50.0f);
+		HpBar->SetWorldLocation(CharacterTop);
+	}
 }

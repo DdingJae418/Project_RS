@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Interface/RSWidgetInterface.h"
 #include "RSCharacterBase.generated.h"
 
 // Forward Declarations
@@ -12,8 +11,7 @@ class UAnimMontage;
 class URSAttackActionData;
 class URSCharacterControlData;
 class URSCharacterStatComponent;
-class URSWidgetComponent;
-class URSUserWidget;
+class USoundCue;
 
 UENUM(BlueprintType)
 enum class ECharacterControlType : uint8 
@@ -27,7 +25,7 @@ enum class ECharacterControlType : uint8
  * Provides core functionality for combat, stats, and UI integration.
  */
 UCLASS(Abstract, BlueprintType, Blueprintable)
-class PROJECT_RS_API ARSCharacterBase : public ACharacter, public IRSWidgetInterface
+class PROJECT_RS_API ARSCharacterBase : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -47,9 +45,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	FORCEINLINE URSCharacterStatComponent* GetStatComponent() const { return Stat; }
 
-	// UI Interface
-	UFUNCTION(BlueprintPure, Category = "UI")
-	FORCEINLINE URSWidgetComponent* GetHpBarComponent() const { return HpBar; }
 
 
 // ================================================================================================
@@ -73,6 +68,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Data", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<URSAttackActionData> AttackActionData;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Sound")
+	TObjectPtr<USoundCue> AttackSound;
+
 
 	// Combat Methods
 	virtual void AttackActionBegin();
@@ -80,6 +78,7 @@ protected:
 	virtual void NotifyAttackActionEnd();
 	virtual void SetComboCheckTimer();
 	virtual void ComboCheck();
+	void PlayAttackSound();
 
 	// Damage & Death System
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
@@ -91,12 +90,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<URSCharacterStatComponent> Stat;
 
-	// ========== UI System ==========
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<URSWidgetComponent> HpBar;
-
-	// IRSWidgetInterface Implementation
-	virtual void SetupWidget(UUserWidget* InUserWidget) override;
 
 
 // ================================================================================================

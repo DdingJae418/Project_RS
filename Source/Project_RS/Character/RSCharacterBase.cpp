@@ -9,8 +9,8 @@
 #include "RSAttackActionData.h"
 #include "Physics/RSCollision.h"
 #include "CharacterStat/RSCharacterStatComponent.h"
-#include "UI/RSWidgetComponent.h"
-#include "UI/RSHpBarWidget.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundCue.h"
 
 // Sets default values
 ARSCharacterBase::ARSCharacterBase()
@@ -44,30 +44,11 @@ ARSCharacterBase::ARSCharacterBase()
 	Stat = CreateDefaultSubobject<URSCharacterStatComponent>(TEXT("Stat"));
 	Stat->OnHpZero.AddUObject(this, &ARSCharacterBase::SetDead);
 
-	// Widget Component
-	HpBar = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
-	static ConstructorHelpers::FClassFinder<UUserWidget> HpBarWidgetRef(TEXT("/Game/Project_RS/UI/WBP_HpBar.WBP_HpBar_C"));
-	if (HpBarWidgetRef.Class)
-	{
-		HpBar->SetWidgetClass(HpBarWidgetRef.Class);
-		HpBar->SetWidgetSpace(EWidgetSpace::Screen);
-		HpBar->SetDrawSize(FVector2D(100.f, 10.f));
-		HpBar->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		HpBar->SetHiddenInGame(true);
-	}
 }
 
 void ARSCharacterBase::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
-
-	const FName SocketName = TEXT("headSocket");
-
-	if (GetMesh() && GetMesh()->DoesSocketExist(SocketName))
-	{
-		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, SocketName);
-		HpBar->SetWorldLocation(GetMesh()->GetSocketLocation(SocketName) + FVector(0.0f, 0.0f, 30.0f));
-	}
 }
 
 
@@ -161,15 +142,24 @@ void ARSCharacterBase::ComboCheck()
 	}
 }
 
+void ARSCharacterBase::PlayAttackSound()
+{
+	ensureMsgf(AttackSound, TEXT("Attack sound is not assigned in %s"), *GetName());
+
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		AttackSound,
+		GetActorLocation(),
+		1.0f,
+		1.0f
+	);
+}
+
 float ARSCharacterBase::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	Stat->ApplyDamage(DamageAmount);
-	if (HpBar->bHiddenInGame && KINDA_SMALL_NUMBER < Stat->GetCurrentHp())
-	{
-		HpBar->SetHiddenInGame(false);
-	}
 
 	return DamageAmount;
 }
@@ -180,7 +170,6 @@ void ARSCharacterBase::SetDead()
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 	PlayDeadAnimation();
 	SetActorEnableCollision(false);
-	HpBar->SetHiddenInGame(true);
 }
 
 void ARSCharacterBase::PlayDeadAnimation()
@@ -190,14 +179,4 @@ void ARSCharacterBase::PlayDeadAnimation()
 	AnimInstance->Montage_Play(DeadMontage, 1.0f);
 }
 
-void ARSCharacterBase::SetupWidget(class UUserWidget* InUserWidget)
-{
-	URSHpBarWidget* HpBarWidget = Cast<URSHpBarWidget>(InUserWidget);
-	if (HpBarWidget)
-	{
-		HpBarWidget->SetMaxHp(Stat->GetCharacterStat().MaxHp);
-		HpBarWidget->UpdateHpBar(Stat->GetCurrentHp());
-		Stat->OnHpChanged.AddUObject(HpBarWidget, &URSHpBarWidget::UpdateHpBar);
-	}
-}
 

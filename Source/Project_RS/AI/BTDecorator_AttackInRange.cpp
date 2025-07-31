@@ -54,5 +54,6 @@ bool UBTDecorator_AttackInRange::CalculateRawConditionValue(UBehaviorTreeCompone
 
 	const float AttackRange = AIPawn->GetAIAttackRange();
 	const float TargetDist = OwnerComp.GetBlackboardComponent()->GetValueAsFloat(BBKEY_TARGETDIST);
+
 	return TargetDist <= AttackRange;
 }

@@ -10,4 +10,5 @@ enum class ECharacterName : uint8
 {
 	Player = 0,
 	Teuthisan,
+	Stickman
 };

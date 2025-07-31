@@ -6,6 +6,7 @@
 #include "Character/RSCharacterBase.h"
 #include "Interface/RSAnimationAttackInterface.h"
 #include "Interface/RSCharacterItemInterface.h"
+#include "Interface/RSWidgetInterface.h"
 #include "RSCharacterPlayer.generated.h"
 
 // Forward Declarations
@@ -43,7 +44,7 @@ const FString GunHandSocketName = TEXT("gun_hand");
  * Extends base character with input handling, camera control, weapon systems, and item interaction.
  */
 UCLASS(BlueprintType, Blueprintable)
-class PROJECT_RS_API ARSCharacterPlayer : public ARSCharacterBase, public IRSAnimationAttackInterface, public IRSCharacterItemInterface
+class PROJECT_RS_API ARSCharacterPlayer : public ARSCharacterBase, public IRSAnimationAttackInterface, public IRSCharacterItemInterface, public IRSWidgetInterface
 {
 	GENERATED_BODY()
 
