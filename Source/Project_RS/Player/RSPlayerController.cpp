@@ -6,11 +6,22 @@
 
 ARSPlayerController::ARSPlayerController()
 {
-	static ConstructorHelpers::FClassFinder<URSHUDWidget> RSHUDWidgetRef(TEXT("/Game/Project_RS/UI/WBP_HUD.WBP_HUD_C"));
-	if (RSHUDWidgetRef.Class)
-	{
-		RSHUDWidgetClass = RSHUDWidgetRef.Class;
-	}
+
+}
+
+void ARSPlayerController::PlayTimeChanged(float CurrentPlayTime)
+{
+	K2_OnPlayTimeChanged(CurrentPlayTime);
+}
+
+void ARSPlayerController::GameClear()
+{
+	K2_OnGameClear();
+}
+
+void ARSPlayerController::GameOver()
+{
+	K2_OnGameOver();
 }
 
 void ARSPlayerController::BeginPlay()
@@ -19,10 +30,4 @@ void ARSPlayerController::BeginPlay()
 
 	FInputModeGameOnly GameOnlyInputMode;
 	SetInputMode(GameOnlyInputMode);
-
-	RSHUDWidget = CreateWidget<URSHUDWidget>(this, RSHUDWidgetClass);
-	if (RSHUDWidget)
-	{
-		RSHUDWidget->AddToViewport();
-	}
 }

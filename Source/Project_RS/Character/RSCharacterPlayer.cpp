@@ -17,6 +17,8 @@
 #include "CharacterStat/RSCharacterStatComponent.h"
 #include "Enums/ECharacterName.h"
 #include "UI/RSHUDWidget.h"
+#include "Interface/RSGameInterface.h"
+#include "GameFramework/GameModeBase.h"
 
 ARSCharacterPlayer::ARSCharacterPlayer()
 {
@@ -160,6 +162,12 @@ void ARSCharacterPlayer::SetDead()
 	if (PlayerController)
 	{
 		DisableInput(PlayerController);
+
+		IRSGameInterface* RSGameMode = Cast<IRSGameInterface>(GetWorld()->GetAuthGameMode());
+		if (RSGameMode)
+		{
+			RSGameMode->OnPlayerDead();
+		}
 	}
 }
 

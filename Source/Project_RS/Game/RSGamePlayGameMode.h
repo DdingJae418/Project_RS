@@ -1,0 +1,42 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/GameModeBase.h"
+#include "Interface/RSGameInterface.h"
+#include "RSGamePlayGameMode.generated.h"
+
+/**
+ * 
+ */
+UCLASS()
+class PROJECT_RS_API ARSGamePlayGameMode : public AGameModeBase, public IRSGameInterface
+{
+	GENERATED_BODY()
+	
+public:
+	ARSGamePlayGameMode();
+
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
+	
+	virtual void OnPlayerDead() override;
+	virtual bool IsGameCleared() override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Game)
+	float TimeLimit;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Game)
+	float CurrentPlayTime;
+
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Game)
+	uint8 bIsCleared : 1;
+
+private:
+	UPROPERTY()
+	TObjectPtr<class URSEffectManager> EffectManager;
+
+	UPROPERTY()
+	TObjectPtr<class ARSPlayerController> PlayerController;
+};

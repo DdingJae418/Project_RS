@@ -17,13 +17,19 @@ class PROJECT_RS_API ARSPlayerController : public APlayerController
 public:
 	ARSPlayerController();
 	
+	UFUNCTION(BlueprintImplementableEvent, Category = Game, Meta = (DisplayName = "OnPlayTimeChangedCpp"))
+	void K2_OnPlayTimeChanged(float CurrentPlayTime);
+
+	UFUNCTION(BlueprintImplementableEvent, Category = Game, Meta = (DisplayName = "OnGameClearCpp"))
+	void K2_OnGameClear();
+
+	UFUNCTION(BlueprintImplementableEvent, Category = Game, Meta = (DisplayName = "OnGameOverCpp"))
+	void K2_OnGameOver();
+
+	void PlayTimeChanged(float CurrentPlayTime);
+	void GameClear();
+	void GameOver();
+
 protected:
 	virtual void BeginPlay() override;
-
-	// HUD Section
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = HUD)
-	TSubclassOf<class URSHUDWidget> RSHUDWidgetClass;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = HUD)
-	TObjectPtr<class URSHUDWidget> RSHUDWidget;
 };
