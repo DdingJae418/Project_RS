@@ -2,4 +2,9 @@
 
 
 #include "Game/RSTitleGameMode.h"
+#include "Camera/CameraActor.h"
 
+void ARSTitleGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+}

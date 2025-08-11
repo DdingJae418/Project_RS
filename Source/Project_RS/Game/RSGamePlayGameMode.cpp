@@ -9,14 +9,6 @@
 
 ARSGamePlayGameMode::ARSGamePlayGameMode()
 {
-	static ConstructorHelpers::FClassFinder<APawn> PlayerBPClassRef(TEXT("/Script/Engine.Blueprint'/Game/Project_RS/Blueprint/BP_CharacterPlayer.BP_CharacterPlayer_C'"));
-	DefaultPawnClass = PlayerBPClassRef.Class;
-	check(DefaultPawnClass);
-
-	static ConstructorHelpers::FClassFinder<APlayerController> PlayerControllerClassRef(TEXT("/Script/Project_RS.RSPlayerController"));
-	PlayerControllerClass = PlayerControllerClassRef.Class;
-	check(PlayerControllerClass);
-
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
