@@ -3,10 +3,22 @@
 
 #include "Player/RSPlayerController.h"
 #include "UI/RSHUDWidget.h"
+#include "Character/RSCharacterPlayer.h"
+
 
 ARSPlayerController::ARSPlayerController()
 {
+	CurrentMoney = 0;
+}
 
+void ARSPlayerController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	if (ARSCharacterPlayer* PlayerCharacter = Cast<ARSCharacterPlayer>(InPawn))
+	{
+		PlayerCharacter->OnOwningMoneyChanged.AddUObject(this, &ARSPlayerController::CurrentMoneyChanged);
+	}
 }
 
 void ARSPlayerController::PlayTimeChanged(float CurrentPlayTime)
@@ -17,11 +29,19 @@ void ARSPlayerController::PlayTimeChanged(float CurrentPlayTime)
 void ARSPlayerController::GameClear()
 {
 	K2_OnGameClear();
+
+	FInputModeUIOnly UIInputMode;
+	SetInputMode(UIInputMode);
+	SetShowMouseCursor(true);
 }
 
 void ARSPlayerController::GameOver()
 {
 	K2_OnGameOver();
+
+	FInputModeUIOnly UIInputMode;
+	SetInputMode(UIInputMode);
+	SetShowMouseCursor(true);
 }
 
 void ARSPlayerController::BeginPlay()

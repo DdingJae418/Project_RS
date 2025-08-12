@@ -12,7 +12,7 @@ ARSGamePlayGameMode::ARSGamePlayGameMode()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
 
-	TimeLimit = 180;
+	TimeLimit = 10;
 	CurrentPlayTime = 0;
 	bIsCleared = false;
 }
@@ -35,8 +35,10 @@ void ARSGamePlayGameMode::Tick(float DeltaSeconds)
 
 	CurrentPlayTime += DeltaSeconds;
 	PlayerController->PlayTimeChanged(CurrentPlayTime);
-	if (FMath::IsNearlyEqual(CurrentPlayTime, TimeLimit))
+	if (TimeLimit <= CurrentPlayTime)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Game Cleared! Play Time: %f"), CurrentPlayTime);
+
 		CurrentPlayTime = TimeLimit;
 		bIsCleared = true;
 

@@ -74,6 +74,7 @@ public:
 	virtual void SetupWidget(class UUserWidget* InUserWidget) override;
 
 	FOnHitTargetDelegate OnHitTarget;
+	FOnOwningMoneyChangeDelegate OnOwningMoneyChanged;
 
 // ================================================================================================
 // PROTECTED IMPLEMENTATION
@@ -184,7 +185,6 @@ private:
 	void SetCurrentMoney(uint8 NewMoney) { CurrentMoney_ = NewMoney; OnOwningMoneyChanged.Broadcast(CurrentMoney_); }
 
 	FOnOwningAmmoChangeDelegate OnOwningAmmonChanged;
-	FOnOwningMoneyChangeDelegate OnOwningMoneyChanged;
 
 	const uint8 MaxAmmo_ = 60;
 	uint8 CurrentAmmo_ = MaxAmmo_;

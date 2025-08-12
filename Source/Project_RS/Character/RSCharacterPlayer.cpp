@@ -19,6 +19,7 @@
 #include "UI/RSHUDWidget.h"
 #include "Interface/RSGameInterface.h"
 #include "GameFramework/GameModeBase.h"
+#include "Player/RSPlayerController.h"
 
 ARSCharacterPlayer::ARSCharacterPlayer()
 {
