@@ -18,12 +18,24 @@ class PROJECT_RS_API ARSGamePlayGameMode : public AGameModeBase, public IRSGameI
 public:
 	ARSGamePlayGameMode();
 
+	//~Start of Actor interface
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaSeconds) override;
+	//~End of Actor interface
 	
+	//~Start of GameModeBase interface
+	virtual void PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
+	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+	virtual void StartPlay() override;
+	//End of GameModeBase interface
+
+	//~Start of RSGameInterface interface
 	virtual void OnPlayerDead() override;
 	virtual bool IsGameCleared() override;
+	//~End of RSGameInterface interface
 
+protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Game)
 	float TimeLimit;
 

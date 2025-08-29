@@ -80,10 +80,14 @@ public:
 // PROTECTED IMPLEMENTATION
 // ================================================================================================
 protected:
-	// Core Overrides
+	
+	//~ Start AActor interface
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
+	virtual void PossessedBy(AController* NewController) override;
 	virtual void Tick(float DeltaTime) override;
+	//~ End AActor interface
+
 
 	// ========== Camera System ==========
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))

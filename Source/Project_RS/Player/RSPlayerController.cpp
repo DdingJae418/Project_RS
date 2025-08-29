@@ -4,6 +4,7 @@
 #include "Player/RSPlayerController.h"
 #include "UI/RSHUDWidget.h"
 #include "Character/RSCharacterPlayer.h"
+#include "Project_RS.h"
 
 
 ARSPlayerController::ARSPlayerController()
@@ -44,9 +45,23 @@ void ARSPlayerController::GameOver()
 	SetShowMouseCursor(true);
 }
 
+void ARSPlayerController::PostInitializeComponents()
+{
+	Super::PostInitializeComponents();
+}
+
+void ARSPlayerController::PostNetInit()
+{
+	Super::PostNetInit();
+}
+
 void ARSPlayerController::BeginPlay()
 {
+	RS_LOG(LogRSNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
 	Super::BeginPlay();
+
+	RS_LOG(LogRSNetwork, Log, TEXT("%s"), TEXT("End"));
 
 	FInputModeGameOnly GameOnlyInputMode;
 	SetInputMode(GameOnlyInputMode);

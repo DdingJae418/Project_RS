@@ -16,8 +16,6 @@ class PROJECT_RS_API ARSPlayerController : public APlayerController
 
 public:
 	ARSPlayerController();
-
-	virtual void OnPossess(APawn* InPawn) override;
 	
 	UFUNCTION(BlueprintImplementableEvent, Category = Game, Meta = (DisplayName = "OnPlayTimeChangedCpp"))
 	void K2_OnPlayTimeChanged(float CurrentPlayTime);
@@ -36,7 +34,13 @@ public:
 	void GameOver();
 
 protected:
+
+	//~ Start AActor interface
+	virtual void PostInitializeComponents() override;
+	virtual void PostNetInit() override;
 	virtual void BeginPlay() override;
+	virtual void OnPossess(APawn* InPawn) override;
+	//~ End AActor interface
 
 	UPROPERTY(BlueprintReadOnly, Category = "Score")
 	int64 CurrentMoney;

@@ -16,10 +16,13 @@ void ARSTitlePlayerController::BeginPlay()
 	SetInputMode(UIInputMode);
 	SetShowMouseCursor(true);
 
-	FVector CameraLocation(2116.0f, -15.0f, 960.0f);
-	FRotator CameraRotation(-6.6f, 180.0f, 0.0f);
-
-	SetViewTarget(this);
-	SetControlRotation(CameraRotation);
-	GetPawn()->SetActorLocation(CameraLocation);
+	if (IsLocalController())
+	{
+		FVector CameraLocation(2116.0f, -15.0f, 960.0f);
+		FRotator CameraRotation(-6.6f, 180.0f, 0.0f);
+		
+		SetViewTarget(this);
+		GetPawn()->SetActorLocation(CameraLocation);
+		SetControlRotation(CameraRotation);
+	}
 }

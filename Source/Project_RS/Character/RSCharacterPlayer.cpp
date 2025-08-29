@@ -55,6 +55,11 @@ void ARSCharacterPlayer::PostInitializeComponents()
 	Stat->SetCharacterStat(ECharacterName::Player);
 }
 
+void ARSCharacterPlayer::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+}
+
 void ARSCharacterPlayer::BeginPlay()
 {
 	Super::BeginPlay();
@@ -113,6 +118,11 @@ void ARSCharacterPlayer::ChangeCharacterControl()
 
 void ARSCharacterPlayer::SetCharacterControl(ECharacterControlType NewCharacterControlType)
 {
+	if (!IsLocallyControlled())
+	{
+		return;
+	}
+
 	URSCharacterControlData* NewCharacterControl = CharacterControlManager[NewCharacterControlType];
 	check(NewCharacterControl);
 
@@ -364,6 +374,9 @@ void ARSCharacterPlayer::PickUpStoryItem(class URSItemData* InItemData)
 
 void ARSCharacterPlayer::ShowAimingUI()
 {
+	if (false == IsLocallyControlled())
+		return;
+		
 	checkf(AimingPointWidget, TEXT("AimingPointWidget is not set in ARSCharacterPlayer::ShowAimingUI()"));
 
 	if (false == AimingPointWidget->IsInViewport())
@@ -378,6 +391,9 @@ void ARSCharacterPlayer::ShowAimingUI()
 
 void ARSCharacterPlayer::HideAimingUI()
 {
+	if (false == IsLocallyControlled())
+		return;
+		
 	checkf(AimingPointWidget, TEXT("AimingPointWidget is not set in ARSCharacterPlayer::HideAimingUI()"));
 	ensureMsgf(AimingPointWidget->IsInViewport(), TEXT("AimingPointWidget is not in viewport in ARSCharacterPlayer::HideAimingUI()"));
 
