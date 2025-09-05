@@ -20,7 +20,7 @@ ARSItem::ARSItem()
 	, bIsFlickering		{ false }
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+	     
 	TriggerBox	= CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
 	TriggerBox->SetCollisionProfileName(CPROFILE_RSTRIGGER);
 	TriggerBox->SetBoxExtent(FVector(100.0f));
@@ -33,38 +33,31 @@ ARSItem::ARSItem()
 	ItemMesh->SetCollisionProfileName(CPROFILE_NOCOLLISION);
 
 	FlickerEffect = CreateDefaultSubobject<URSWidgetComponent>(TEXT("FlickerEffect"));
-	static ConstructorHelpers::FClassFinder<UUserWidget> FlickerWidgetRef(TEXT("/Game/Project_RS/UI/WBP_ItemFlicker.WBP_ItemFlicker_C"));
-	if (FlickerWidgetRef.Class)
-	{
-		FlickerEffect->SetWidgetClass(FlickerWidgetRef.Class);
-		FlickerEffect->SetupAttachment(TriggerBox);
-		FlickerEffect->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
-		FlickerEffect->SetWidgetSpace(EWidgetSpace::Screen);
-		FlickerEffect->SetDrawSize(FVector2D(140.0f, 140.0f));
-		FlickerEffect->SetPivot(FVector2D(0.5f, 0.5f));
-		FlickerEffect->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		FlickerEffect->SetHiddenInGame(true);
-	}
+	FlickerEffect->SetupAttachment(TriggerBox);
+	FlickerEffect->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
+	FlickerEffect->SetWidgetSpace(EWidgetSpace::Screen);
+	FlickerEffect->SetDrawSize(FVector2D(140.0f, 140.0f));
+	FlickerEffect->SetPivot(FVector2D(0.5f, 0.5f));
+	FlickerEffect->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	FlickerEffect->SetHiddenInGame(true);
 
-	ItemPrompt = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
-	static ConstructorHelpers::FClassFinder<UUserWidget> ItemPromptWidgetRef(TEXT("/Game/Project_RS/UI/WBP_ItemPrompt.WBP_ItemPrompt_C"));
-	if (ItemPromptWidgetRef.Class)
-	{
-		ItemPrompt->SetWidgetClass(ItemPromptWidgetRef.Class);
-		ItemPrompt->SetWidgetSpace(EWidgetSpace::Screen);
-		ItemPrompt->SetDrawSize(FVector2D(200.0f, 80.f));
-		ItemPrompt->SetPivot(FVector2D(0.1f, 1.0f));
-		ItemPrompt->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		ItemPrompt->SetupAttachment(TriggerBox);
-		ItemPrompt->SetRelativeLocation(FVector(0.f, 0.f, 10.f));
-		ItemPrompt->SetHiddenInGame(true);
-	}
+	ItemPrompt = CreateDefaultSubobject<URSWidgetComponent>(TEXT("ItemPromptWidget"));
+	ItemPrompt->SetWidgetSpace(EWidgetSpace::Screen);
+	ItemPrompt->SetDrawSize(FVector2D(200.0f, 80.f));
+	ItemPrompt->SetPivot(FVector2D(0.1f, 1.0f));
+	ItemPrompt->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ItemPrompt->SetupAttachment(TriggerBox);
+	ItemPrompt->SetRelativeLocation(FVector(0.0f, 0.0f, 10.f));
+	ItemPrompt->SetHiddenInGame(true);
 }
 
 void ARSItem::BeginPlay()
 {
 	Super::BeginPlay();
-	ensureMsgf(ItemData, TEXT("[%s] ItemData �� �Ҵ���� �ʾҽ��ϴ�."), *GetName());
+
+	ensureMsgf(ItemData, TEXT("[%s] ItemData is not assigned."), *GetName());
+	//ensureMsgf(ItemPrompt->GetWidget(), TEXT("[%s] ItemPrompt widget is not assigned."), *GetName());
+	//ensureMsgf(FlickerEffect->GetWidget(), TEXT("[%s] FlickerEffect widget is not assigned."), *GetName());
 	
 	FlickerTimer = FMath::RandRange(0.0f, FlickerInterval);
 }
@@ -81,13 +74,12 @@ void ARSItem::ConsumeItem()
 {
 	SetActorEnableCollision(false);
 	ItemPrompt->SetHiddenInGame(true);
+
 	Destroy();
 }
 
 void ARSItem::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Log, TEXT("%s"), *ItemData->GetName().ToString());
-
 	IRSCharacterItemInterface* ItemUser = Cast<IRSCharacterItemInterface>(OtherActor);
 	if (nullptr == ItemUser)
 		return;
@@ -127,14 +119,14 @@ void ARSItem::UpdateFlicker(float DeltaTime)
 	
 	if (false == bIsFlickering)
 	{
-		if (FlickerTimer >= FlickerInterval)
+		if (FlickerInterval < FlickerTimer)
 		{
 			StartFlicker();
 		}
 	}
 	else
 	{
-		if (FlickerTimer <= FlickerDuration)
+		if (FlickerTimer < FlickerDuration)
 		{
 			float Alpha = FMath::Sin((FlickerTimer / FlickerDuration) * PI);
 			if (FlickerEffect->GetWidget())

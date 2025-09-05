@@ -9,6 +9,9 @@
 #include "RSItem.generated.h"
 
 class URSItemData;
+class UBoxComponent;
+class UStaticMeshComponent;
+class URSWidgetComponent;
 
 UCLASS()
 class PROJECT_RS_API ARSItem : public AActor, public IRSWidgetInterface
@@ -39,19 +42,19 @@ private:
 	void OnTriggerEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	UPROPERTY(VisibleAnywhere, Category = "Item")
-	TObjectPtr<class UBoxComponent> TriggerBox;
+	TObjectPtr<UBoxComponent> TriggerBox;
 
 	UPROPERTY(VisibleAnywhere, Category = "Item")
-	TObjectPtr<class UStaticMeshComponent> ItemMesh;
+	TObjectPtr<UStaticMeshComponent> ItemMesh;
 
-	UPROPERTY(VisibleAnywhere, Category = "Item")
-	TObjectPtr<class URSWidgetComponent> ItemPrompt;
+	UPROPERTY(EditDefaultsOnly, Category = "Item", Meta = (RequiredComponent))
+	TObjectPtr<URSItemData> ItemData;
 
-	UPROPERTY(EditAnywhere, Category = "Item", meta = (RequiredComponent))
-	TObjectPtr<class URSItemData> ItemData;
+	UPROPERTY(EditDefaultsOnly, Category = "Item", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<URSWidgetComponent> ItemPrompt;
 
-	UPROPERTY(VisibleAnywhere, Category = "Item")
-	TObjectPtr<class URSWidgetComponent> FlickerEffect;
+	UPROPERTY(EditDefaultsOnly, Category = "Item", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<URSWidgetComponent> FlickerEffect;
 
 	void StartFlicker();
 	void UpdateFlicker(float DeltaTime);
