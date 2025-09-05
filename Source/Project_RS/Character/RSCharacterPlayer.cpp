@@ -2,6 +2,7 @@
 
 
 #include "Character/RSCharacterPlayer.h"
+#include "Project_RS.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -20,6 +21,8 @@
 #include "Interface/RSGameInterface.h"
 #include "GameFramework/GameModeBase.h"
 #include "Player/RSPlayerController.h"
+#include "Net/UnrealNetwork.h"
+#include "Algo/MinElement.h"
 
 ARSCharacterPlayer::ARSCharacterPlayer()
 {
@@ -39,7 +42,7 @@ ARSCharacterPlayer::ARSCharacterPlayer()
 	bIsAiming						= false;
 	bIsCameraTransitioning			= false;
 	CameraInterpSpeed				= 6.0f;
-	TargetArmLength				= 300.0f;
+	TargetArmLength					= 300.0f;
 
 	// Item Action
 	TakeItemActions.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpAmmoItem)));
@@ -96,8 +99,7 @@ void ARSCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EnhancedInputComponent->BindAction(AimingMoveAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::AimingMove);
 	EnhancedInputComponent->BindAction(AimingLookAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::AimingLook);
 	EnhancedInputComponent->BindAction(FireAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::Fire);
-	EnhancedInputComponent->BindAction(TakeItemAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::TakeItem);
-
+	EnhancedInputComponent->BindAction(TakeItemAction, ETriggerEvent::Triggered, this, &ARSCharacterPlayer::ServerRPCTakeItem);
 }
 
 void ARSCharacterPlayer::ChangeCharacterControl()
@@ -301,23 +303,24 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 
 void ARSCharacterPlayer::FindItem(class ARSItem* InItem)
 {
-	ensureMsgf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
+	checkf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
 	ensureMsgf(false == CurrentItems.Contains(InItem), TEXT("Duplicate item is found in ARSCharacterPlayer::FindItem()"));
+	checkf(HasAuthority(), TEXT("FindItem must be called only in server."));
 
 	CurrentItems.Add(InItem);
 }
 
 void ARSCharacterPlayer::LoseItem(class ARSItem* InItem)
 {
-	ensureMsgf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
+	checkf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
 	ensureMsgf(CurrentItems.Contains(InItem), TEXT("InItem is not found in ARSCharacterPlayer::LoseItem()"));
+	checkf(HasAuthority(), TEXT("LoseItem must be called only in server."));
 
 	CurrentItems.Remove(InItem);
 }
 
 void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
 {
-
 	if (URSHUDWidget* InHUDWidget = Cast<URSHUDWidget>(InUserWidget))
 	{
 		InHUDWidget->SetMaxHp(Stat->GetCharacterStat().MaxHp);
@@ -332,14 +335,18 @@ void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
 	}
 }
 
-void ARSCharacterPlayer::TakeItem()
+void ARSCharacterPlayer::ServerRPCTakeItem_Implementation()
 {
-	if (CurrentItems.Num() == 0)
+	if (CurrentItems.IsEmpty())
 		return;
 
-	ARSItem* item = CurrentItems[0];
-	URSItemData* itemData = item->GetItemData();
+	TArray<ARSItem*> ValidItems = CurrentItems.FilterByPredicate([](const ARSItem* Item) { return IsValid(Item); });
+	if (ValidItems.IsEmpty())
+		return;
 
+	ARSItem* item = *Algo::MinElementBy(ValidItems, [this](ARSItem* Item) { return Item->GetDistanceTo(this); });
+
+	URSItemData* itemData = item->GetItemData();
 	TakeItemActions[(uint8)itemData->GetType()].ItemDelegate.ExecuteIfBound(itemData);
 	item->ConsumeItem(); // Automatically call LoseItem() after consuming
 }

@@ -9,7 +9,6 @@
 #include "Interface/RSWidgetInterface.h"
 #include "RSCharacterPlayer.generated.h"
 
-// Forward Declarations
 class UInputAction;
 class UStaticMeshComponent;
 class USpringArmComponent;
@@ -140,13 +139,12 @@ protected:
 	//~ End IRSAnimtationAttackInterface interface
 
 private:
+	UFUNCTION(Server, Reliable)
+	void ServerRPCTakeItem();	
+
 	UPROPERTY()
 	TArray<FTakeItemDelegateWrapper> TakeItemActions;
 
-	UPROPERTY()
-	TArray<TObjectPtr<ARSItem>> CurrentItems;
-
-	void TakeItem();	
 	void PickUpAmmoItem(URSItemData* InItemData);
 	void PickUpMedicalItem(URSItemData* InItemData);
 	void PickUpMoneyItem(URSItemData* InItemData);
@@ -158,6 +156,9 @@ private:
 	void HideAimingUI();
 
 	FOnOwningAmmoChangeDelegate OnOwningAmmonChanged;
+
+	UPROPERTY()
+	TArray<ARSItem*> CurrentItems;
 
 	ECharacterControlType CurrentCharacterControlType;
 	bool bIsWeaponEquipped;

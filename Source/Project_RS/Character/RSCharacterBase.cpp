@@ -15,10 +15,10 @@
 // Sets default values
 ARSCharacterBase::ARSCharacterBase()
 {
-	// Pawn
 	bUseControllerRotationPitch	= false;
 	bUseControllerRotationYaw	= false;
 	bUseControllerRotationRoll	= false;
+	bReplicates = true;
 
 	// Capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);

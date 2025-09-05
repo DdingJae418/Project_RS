@@ -11,16 +11,14 @@
 #include "interface/RSCharacterItemInterface.h"
 #include "Engine/Engine.h"
 
-// Sets default values
+
 ARSItem::ARSItem()
 	: FlickerInterval	{ 2.0f }
 	, FlickerDuration	{ 0.2f }
 	, MaxOpacity		{ 1.0f } 
 	, FlickerTimer		{ 0.0f }
 	, bIsFlickering		{ false }
-{
-	PrimaryActorTick.bCanEverTick = true;
-	     
+{	     
 	TriggerBox	= CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
 	TriggerBox->SetCollisionProfileName(CPROFILE_RSTRIGGER);
 	TriggerBox->SetBoxExtent(FVector(100.0f));
@@ -49,6 +47,9 @@ ARSItem::ARSItem()
 	ItemPrompt->SetupAttachment(TriggerBox);
 	ItemPrompt->SetRelativeLocation(FVector(0.0f, 0.0f, 10.f));
 	ItemPrompt->SetHiddenInGame(true);
+
+	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 }
 
 void ARSItem::BeginPlay()
@@ -56,8 +57,8 @@ void ARSItem::BeginPlay()
 	Super::BeginPlay();
 
 	ensureMsgf(ItemData, TEXT("[%s] ItemData is not assigned."), *GetName());
-	//ensureMsgf(ItemPrompt->GetWidget(), TEXT("[%s] ItemPrompt widget is not assigned."), *GetName());
-	//ensureMsgf(FlickerEffect->GetWidget(), TEXT("[%s] FlickerEffect widget is not assigned."), *GetName());
+	ensureMsgf(ItemPrompt->GetWidget(), TEXT("[%s] ItemPrompt widget is not assigned."), *GetName());
+	ensureMsgf(FlickerEffect->GetWidget(), TEXT("[%s] FlickerEffect widget is not assigned."), *GetName());
 	
 	FlickerTimer = FMath::RandRange(0.0f, FlickerInterval);
 }
@@ -84,8 +85,19 @@ void ARSItem::OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AA
 	if (nullptr == ItemUser)
 		return;
 
-	ItemUser->FindItem(this);
-	ItemPrompt->SetHiddenInGame(false);
+	if (HasAuthority())
+	{
+		ItemUser->FindItem(this);
+	}
+
+	if (APawn* Pawn = Cast<APawn>(OtherActor))
+	{
+		if (Pawn->IsLocallyControlled())
+		{
+			ItemPrompt->SetHiddenInGame(false);
+			ItemPrompt->SetVisibility(true, true);
+		}
+	}
 }
 
 void ARSItem::OnTriggerEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -94,8 +106,19 @@ void ARSItem::OnTriggerEndOverlap(UPrimitiveComponent* OverlappedComponent, AAct
 	if (nullptr == ItemUser)
 		return;
 
-	ItemUser->LoseItem(this);
-	ItemPrompt->SetHiddenInGame(true);
+	if (HasAuthority())
+	{
+		ItemUser->LoseItem(this);
+	}
+	
+	if (APawn* Pawn = Cast<APawn>(OtherActor))
+	{
+		if (Pawn->IsLocallyControlled())
+		{
+			ItemPrompt->SetHiddenInGame(true);
+			ItemPrompt->SetVisibility(false, true);
+		}
+	}
 }
 
 void ARSItem::SetupWidget(class UUserWidget* InUserWidget)

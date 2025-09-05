@@ -12,6 +12,7 @@ class URSItemData;
 class UBoxComponent;
 class UStaticMeshComponent;
 class URSWidgetComponent;
+class IRSCharacterItemInterface;
 
 UCLASS()
 class PROJECT_RS_API ARSItem : public AActor, public IRSWidgetInterface

@@ -29,27 +29,17 @@ class PROJECT_RS_API ARSCharacterBase : public ACharacter
 {
 	GENERATED_BODY()
 
-// ================================================================================================
-// PUBLIC INTERFACE
-// ================================================================================================
 public:
-	// Constructor & Core Overrides
 	ARSCharacterBase();
-	virtual void PostInitializeComponents() override;
 
-	// Combat Interface
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 	virtual void ProcessAttackCommand();
 
-	// Stat Interface
 	UFUNCTION(BlueprintPure, Category = "Stats")
 	FORCEINLINE URSCharacterStatComponent* GetStatComponent() const { return Stat; }
 
+	virtual void PostInitializeComponents() override;
 
-
-// ================================================================================================
-// PROTECTED IMPLEMENTATION
-// ================================================================================================
 protected:
 	// ========== Character Control System ==========
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Control", meta = (AllowPrivateAccess = "true"))
