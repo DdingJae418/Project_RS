@@ -18,13 +18,12 @@ ARSGamePlayGameMode::ARSGamePlayGameMode()
 	bIsCleared = false;
 
 	GameStateClass = ARSGameState::StaticClass();
+	EffectManager = CreateDefaultSubobject<URSEffectManager>(TEXT("EffectManager"));
 }
 
 void ARSGamePlayGameMode::BeginPlay()
 {
 	Super::BeginPlay();
-
-	EffectManager = NewObject<URSEffectManager>(this);
 }
 
 void ARSGamePlayGameMode::Tick(float DeltaSeconds)
@@ -86,6 +85,7 @@ void ARSGamePlayGameMode::PostLogin(APlayerController* NewPlayer)
 			if (EffectManager && RSPlayer->GetCharacter())
 			{
 				EffectManager->Initialize(RSPlayer->GetCharacter());
+				UE_LOG(LogTemp, Log, TEXT("Effect Manager Initialized."));
 			}
 		}
 	}

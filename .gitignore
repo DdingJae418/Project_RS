@@ -76,10 +76,3 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
-
-# Ignore all subfolders and files inside the Content folder
-/Content/*
-
-# Except the Project_RS folder
-!/Content/Project_RS/
-!/Content/Project_RS/**  # Include all files and subdirectories under Project_RS
