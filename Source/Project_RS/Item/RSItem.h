@@ -8,59 +8,57 @@
 #include "Components/TimelineComponent.h"
 #include "RSItem.generated.h"
 
+class URSItemData;
+
 UCLASS()
 class PROJECT_RS_API ARSItem : public AActor, public IRSWidgetInterface
 {
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
 	ARSItem();
 
-	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaTime) override;
-
-	FORCEINLINE class URSItemData* GetItemData() const { return ItemData.Get(); }
+	FORCEINLINE URSItemData* GetItemData() const { return ItemData.Get(); }
 	void ConsumeItem();
 
-protected:
-	UPROPERTY(VisibleAnywhere, Category = Item)
-	TObjectPtr<class UBoxComponent> Trigger;
-
-	UPROPERTY(VisibleAnywhere, Category = Item)
-	TObjectPtr<class UStaticMeshComponent> Mesh;
-
-	UPROPERTY(VisibleAnywhere, Category = Item)
-	TObjectPtr<class URSWidgetComponent> ItemPrompt;
-
-	UPROPERTY(EditAnywhere, Category = Item, meta = (RequiredComponent))
-	TObjectPtr<class URSItemData> ItemData;
-
-	UPROPERTY(VisibleAnywhere, Category = "Item|Effect")
-	TObjectPtr<class URSWidgetComponent> FlickerEffect;
-
-	UPROPERTY(EditAnywhere, Category = "Item|Effect")
-	float FlickerInterval = 2.0f;
-
-	UPROPERTY(EditAnywhere, Category = "Item|Effect")
-	float FlickerDuration = 0.3f;
-
-	UPROPERTY(EditAnywhere, Category = "Item|Effect")
-	float MaxOpacity = 1.0f;
+	//~ Start AActor interface
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+	//~ End AActor interface
 
 protected:
+	//~ Start IRSWidgetInterface interface
+	virtual void SetupWidget(class UUserWidget* InUserWidget) override;
+	//~ End IRSWidgetInterface interface
+
+private:
 	UFUNCTION()
 	void OnTriggerBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	
 	UFUNCTION()
 	void OnTriggerEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
-	
-	virtual void SetupWidget(class UUserWidget* InUserWidget) override;
 
-private:
+	UPROPERTY(VisibleAnywhere, Category = "Item")
+	TObjectPtr<class UBoxComponent> TriggerBox;
+
+	UPROPERTY(VisibleAnywhere, Category = "Item")
+	TObjectPtr<class UStaticMeshComponent> ItemMesh;
+
+	UPROPERTY(VisibleAnywhere, Category = "Item")
+	TObjectPtr<class URSWidgetComponent> ItemPrompt;
+
+	UPROPERTY(EditAnywhere, Category = "Item", meta = (RequiredComponent))
+	TObjectPtr<class URSItemData> ItemData;
+
+	UPROPERTY(VisibleAnywhere, Category = "Item")
+	TObjectPtr<class URSWidgetComponent> FlickerEffect;
 
 	void StartFlicker();
 	void UpdateFlicker(float DeltaTime);
+
+	const float FlickerInterval = 2.0f;
+	const float FlickerDuration = 0.3f;
+	const float MaxOpacity		= 1.0f;
 
 	float FlickerTimer;
 	bool bIsFlickering;

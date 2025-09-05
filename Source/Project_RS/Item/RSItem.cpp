@@ -13,28 +13,31 @@
 
 // Sets default values
 ARSItem::ARSItem()
+	: FlickerInterval	{ 2.0f }
+	, FlickerDuration	{ 0.2f }
+	, MaxOpacity		{ 1.0f } 
+	, FlickerTimer		{ 0.0f }
+	, bIsFlickering		{ false }
 {
 	PrimaryActorTick.bCanEverTick = true;
 	
-	Trigger = CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
-	Mesh	= CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
+	TriggerBox	= CreateDefaultSubobject<UBoxComponent>(TEXT("TriggerBox"));
+	TriggerBox->SetCollisionProfileName(CPROFILE_RSTRIGGER);
+	TriggerBox->SetBoxExtent(FVector(100.0f));
+	TriggerBox->OnComponentBeginOverlap.AddDynamic(this, &ARSItem::OnTriggerBeginOverlap);
+	TriggerBox->OnComponentEndOverlap.AddDynamic(this, &ARSItem::OnTriggerEndOverlap);
+	RootComponent = TriggerBox;
 
-	RootComponent = Trigger;
-
-	Trigger->SetCollisionProfileName(CPROFILE_RSTRIGGER);
-	Trigger->SetBoxExtent(FVector(100.0f));
-	Trigger->OnComponentBeginOverlap.AddDynamic(this, &ARSItem::OnTriggerBeginOverlap);
-	Trigger->OnComponentEndOverlap.AddDynamic(this, &ARSItem::OnTriggerEndOverlap);
-
-	Mesh->SetupAttachment(Trigger);
-	Mesh->SetCollisionProfileName("NoCollision");
+	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
+	ItemMesh->SetupAttachment(TriggerBox);
+	ItemMesh->SetCollisionProfileName(CPROFILE_NOCOLLISION);
 
 	FlickerEffect = CreateDefaultSubobject<URSWidgetComponent>(TEXT("FlickerEffect"));
 	static ConstructorHelpers::FClassFinder<UUserWidget> FlickerWidgetRef(TEXT("/Game/Project_RS/UI/WBP_ItemFlicker.WBP_ItemFlicker_C"));
 	if (FlickerWidgetRef.Class)
 	{
 		FlickerEffect->SetWidgetClass(FlickerWidgetRef.Class);
-		FlickerEffect->SetupAttachment(Trigger);
+		FlickerEffect->SetupAttachment(TriggerBox);
 		FlickerEffect->SetRelativeLocation(FVector(0.0f, 0.0f, 0.0f));
 		FlickerEffect->SetWidgetSpace(EWidgetSpace::Screen);
 		FlickerEffect->SetDrawSize(FVector2D(140.0f, 140.0f));
@@ -42,9 +45,6 @@ ARSItem::ARSItem()
 		FlickerEffect->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		FlickerEffect->SetHiddenInGame(true);
 	}
-
-	FlickerTimer = 0.0f;
-	bIsFlickering = false;
 
 	ItemPrompt = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
 	static ConstructorHelpers::FClassFinder<UUserWidget> ItemPromptWidgetRef(TEXT("/Game/Project_RS/UI/WBP_ItemPrompt.WBP_ItemPrompt_C"));
@@ -55,7 +55,7 @@ ARSItem::ARSItem()
 		ItemPrompt->SetDrawSize(FVector2D(200.0f, 80.f));
 		ItemPrompt->SetPivot(FVector2D(0.1f, 1.0f));
 		ItemPrompt->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		ItemPrompt->SetupAttachment(Trigger);
+		ItemPrompt->SetupAttachment(TriggerBox);
 		ItemPrompt->SetRelativeLocation(FVector(0.f, 0.f, 10.f));
 		ItemPrompt->SetHiddenInGame(true);
 	}

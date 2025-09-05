@@ -28,7 +28,7 @@ public:
 	virtual APlayerController* Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage) override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	virtual void StartPlay() override;
-	//End of GameModeBase interface
+	//~End of GameModeBase interface
 
 	//~Start of RSGameInterface interface
 	virtual void OnPlayerDead() override;

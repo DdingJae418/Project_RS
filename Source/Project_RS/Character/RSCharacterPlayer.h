@@ -35,61 +35,42 @@ struct FTakeItemDelegateWrapper
 	FOnTakeItemDelegate ItemDelegate;
 };
 
+const FString GunSpineSocketName	= TEXT("gun_spine");
+const FString GunHandSocketName		= TEXT("gun_hand");
 
-const FString GunSpineSocketName = TEXT("gun_spine");
-const FString GunHandSocketName = TEXT("gun_hand");
 
-/**
- * Player-controlled character class.
- * Extends base character with input handling, camera control, weapon systems, and item interaction.
- */
 UCLASS(BlueprintType, Blueprintable)
 class PROJECT_RS_API ARSCharacterPlayer : public ARSCharacterBase, public IRSAnimationAttackInterface, public IRSCharacterItemInterface, public IRSWidgetInterface
 {
 	GENERATED_BODY()
 
-// ================================================================================================
-// PUBLIC INTERFACE
-// ================================================================================================
 public:
-	// Constructor & Core Overrides
 	ARSCharacterPlayer();
+	
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
-	// Character Control Interface
-	float GetAimingPitch() const;
-	bool IsWeaponEquipped() const { return bIsWeaponEquipped_; }
-	bool IsAiming() const { return bIsAiming_; }
+	bool IsWeaponEquipped() const { return bIsWeaponEquipped; }
+	bool IsAiming() const { return bIsAiming; }
 	void AttachWeapon();
+	float GetAimingPitch() const;
 
-	// Item Interface
-	uint8 GetCurrentAmmo() const { return CurrentAmmo_; }
-	uint8 GetCurrentMoney() const { return CurrentMoney_; }
-
-	// IRSCharacterItemInterface Implementation
-	virtual void FindItem(ARSItem* InItem) override;
-	virtual void LoseItem(ARSItem* InItem) override;
-
-	// UI Interface
-	virtual void SetupWidget(class UUserWidget* InUserWidget) override;
+	uint8 GetCurrentAmmo() const { return CurrentAmmo; }
+	uint8 GetCurrentMoney() const { return CurrentMoney; }
 
 	FOnHitTargetDelegate OnHitTarget;
 	FOnOwningMoneyChangeDelegate OnOwningMoneyChanged;
 
-// ================================================================================================
-// PROTECTED IMPLEMENTATION
-// ================================================================================================
+	//~ Start IRSCharacterItemInterface interface
+	virtual void FindItem(ARSItem* InItem) override;
+	virtual void LoseItem(ARSItem* InItem) override;
+	//~ End IRSCharacterItenInterface interface
+
+	//~ Start of IRSWidgetInterface interface
+	virtual void SetupWidget(class UUserWidget* InUserWidget) override;
+	//~ End of IRSWidgetInterface interface
+
 protected:
-	
-	//~ Start AActor interface
-	virtual void BeginPlay() override;
-	virtual void PostInitializeComponents() override;
-	virtual void PossessedBy(AController* NewController) override;
-	virtual void Tick(float DeltaTime) override;
-	//~ End AActor interface
 
-
-	// ========== Camera System ==========
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USpringArmComponent> CameraBoom;
 
@@ -99,22 +80,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
 	float CameraInterpSpeed;
 
-	void UpdateCameraMovement(float DeltaTime);
-
-	// ========== Combat System ==========
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UStaticMeshComponent> Weapon;
 
-	void SetupWeapon();
-	virtual void SetDead() override;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TObjectPtr<class UUserWidget> AimingPointWidget;
 
-	// ========== Character Control System ==========
-	void ChangeCharacterControl();
-	void SetCharacterControl(ECharacterControlType NewCharacterControlType);
-	virtual void SetCharacterControlData(const URSCharacterControlData* ControlData) override;
-
-	// ========== Input System ==========
-	// Input Actions
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> JumpAction;
 
@@ -142,59 +113,62 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UInputAction> TakeItemAction;
 
-	// Input Handlers
+	void UpdateCameraMovement(float DeltaTime);
+
+	void SetupWeapon();
+	virtual void SetDead() override;
+
+	void ChangeCharacterControl();
+	void SetCharacterControl(ECharacterControlType NewCharacterControlType);
+	virtual void SetCharacterControlData(const URSCharacterControlData* ControlData) override;
+
 	void ShoulderMove(const FInputActionValue& Value);
 	void ShoulderLook(const FInputActionValue& Value);
 	void AimingMove(const FInputActionValue& Value);
 	void AimingLook(const FInputActionValue& Value);
 	void Fire();
 
-	// IRSAnimationAttackInterface Implementation
+	//~ Start AActor interface
+	virtual void BeginPlay() override;
+	virtual void PostInitializeComponents() override;
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void Tick(float DeltaTime) override;
+	//~ End AActor interface
+
+	//~ Start IRSAnimationAttackInterface interface
 	virtual void AttackHitCheck_Implementation() override;
+	//~ End IRSAnimtationAttackInterface interface
 
-	// ========== UI System ==========
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TObjectPtr<class UUserWidget> AimingPointWidget;
-
-
-// ================================================================================================
-// PRIVATE IMPLEMENTATION
-// ================================================================================================
 private:
-	// ========== Character Control Internal State ==========
-	ECharacterControlType CurrentCharacterControlType;
-	bool bIsWeaponEquipped_;
-	bool bIsAiming_;
-
-	// ========== Camera Internal State ==========
-	bool bIsCameraTransitioning_;
-	float TargetArmLength_;
-	FRotator FollowCameraTargetRotation_;
-	FVector	FollowCameraTargetLocation_;
-
-	// ========== Item System ==========
 	UPROPERTY()
-	TArray<FTakeItemDelegateWrapper> TakeItemActions_;
+	TArray<FTakeItemDelegateWrapper> TakeItemActions;
 
 	UPROPERTY()
-	TArray<TObjectPtr<ARSItem>> CurrentItems_;
+	TArray<TObjectPtr<ARSItem>> CurrentItems;
 
 	void TakeItem();	
 	void PickUpAmmoItem(URSItemData* InItemData);
 	void PickUpMedicalItem(URSItemData* InItemData);
 	void PickUpMoneyItem(URSItemData* InItemData);
-	void PickUpStoryItem(URSItemData* InItemData);
 
-	void SetCurrentAmmo(uint8 NewAmmo) { CurrentAmmo_ = FMath::Clamp<uint8>(NewAmmo, 0, MaxAmmo_); OnOwningAmmonChanged.Broadcast(CurrentAmmo_); }
-	void SetCurrentMoney(uint8 NewMoney) { CurrentMoney_ = NewMoney; OnOwningMoneyChanged.Broadcast(CurrentMoney_); }
+	void SetCurrentAmmo(uint8 NewAmmo) { CurrentAmmo = FMath::Clamp<uint8>(NewAmmo, 0, MaxAmmo); OnOwningAmmonChanged.Broadcast(CurrentAmmo); }
+	void SetCurrentMoney(uint8 NewMoney) { CurrentMoney = NewMoney; OnOwningMoneyChanged.Broadcast(CurrentMoney); }
+
+	void ShowAimingUI();
+	void HideAimingUI();
 
 	FOnOwningAmmoChangeDelegate OnOwningAmmonChanged;
 
-	const uint8 MaxAmmo_ = 60;
-	uint8 CurrentAmmo_ = MaxAmmo_;
-	uint32 CurrentMoney_ = 0;
+	ECharacterControlType CurrentCharacterControlType;
+	bool bIsWeaponEquipped;
+	bool bIsAiming;
 
-	// ========== UI Internal Methods ==========
-	void ShowAimingUI();
-	void HideAimingUI();
+	FRotator FollowCameraTargetRotation;
+	FVector	FollowCameraTargetLocation;
+	bool bIsCameraTransitioning;
+	float TargetArmLength;
+
+	const uint8 MaxAmmo = 60;
+	uint8 CurrentAmmo	= MaxAmmo;
+	uint32 CurrentMoney = 0;
 };

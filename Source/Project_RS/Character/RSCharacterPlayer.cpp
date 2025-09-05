@@ -35,17 +35,16 @@ ARSCharacterPlayer::ARSCharacterPlayer()
 	Weapon->SetupAttachment(GetMesh(), *GunSpineSocketName);
 
 	CurrentCharacterControlType		= ECharacterControlType::Shoulder;
-	bIsWeaponEquipped_				= false;
-	bIsAiming_						= false;
-	bIsCameraTransitioning_			= false;
+	bIsWeaponEquipped				= false;
+	bIsAiming						= false;
+	bIsCameraTransitioning			= false;
 	CameraInterpSpeed				= 6.0f;
-	TargetArmLength_				= 300.0f;
+	TargetArmLength				= 300.0f;
 
 	// Item Action
-	TakeItemActions_.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpAmmoItem)));
-	TakeItemActions_.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpMedicalItem)));
-	TakeItemActions_.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpMoneyItem)));
-	TakeItemActions_.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpStoryItem)));
+	TakeItemActions.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpAmmoItem)));
+	TakeItemActions.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpMedicalItem)));
+	TakeItemActions.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpMoneyItem)));
 }
 
 void ARSCharacterPlayer::PostInitializeComponents()
@@ -77,12 +76,14 @@ void ARSCharacterPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bIsCameraTransitioning_)
+	if (bIsCameraTransitioning)
 		UpdateCameraMovement(DeltaTime);
 }
 
 void ARSCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
 	UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent);
 
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
@@ -105,14 +106,14 @@ void ARSCharacterPlayer::ChangeCharacterControl()
 	{
 		SetCharacterControl(ECharacterControlType::Aiming);
 		ShowAimingUI();
-		bIsAiming_			= true;
-		bIsWeaponEquipped_	= true; // Automatically equip weapon when aiming
+		bIsAiming			= true;
+		bIsWeaponEquipped	= true; // Automatically equip weapon when aiming
 	}
 	else if (ECharacterControlType::Aiming == CurrentCharacterControlType)
 	{
 		SetCharacterControl(ECharacterControlType::Shoulder);
 		HideAimingUI();
-		bIsAiming_ = false;
+		bIsAiming = false;
 	}
 }
 
@@ -145,9 +146,9 @@ void ARSCharacterPlayer::SetCharacterControlData(const class URSCharacterControl
 {
 	Super::SetCharacterControlData(CharacterControlData);
 
-	TargetArmLength_			= CharacterControlData->TargetArmLength;
-	FollowCameraTargetRotation_	= CharacterControlData->RelativeRotation;
-	FollowCameraTargetLocation_	= CharacterControlData->RelativeLocation;
+	TargetArmLength			= CharacterControlData->TargetArmLength;
+	FollowCameraTargetRotation	= CharacterControlData->RelativeRotation;
+	FollowCameraTargetLocation	= CharacterControlData->RelativeLocation;
 
 	CameraBoom->bUsePawnControlRotation		= CharacterControlData->bUsePawnControlRotation;
 	CameraBoom->bInheritPitch				= CharacterControlData->bInheritPitch;
@@ -155,14 +156,14 @@ void ARSCharacterPlayer::SetCharacterControlData(const class URSCharacterControl
 	CameraBoom->bInheritRoll				= CharacterControlData->bInheritRoll;
 	CameraBoom->bDoCollisionTest			= CharacterControlData->bDoCollisionTest;
 
-	bIsCameraTransitioning_ = true;
+	bIsCameraTransitioning = true;
 }
 
 void ARSCharacterPlayer::SetupWeapon()
 {
-	if (true == bIsAiming_) return;
+	if (true == bIsAiming) return;
 
-	bIsWeaponEquipped_ = !bIsWeaponEquipped_;
+	bIsWeaponEquipped = !bIsWeaponEquipped;
 }
 
 void ARSCharacterPlayer::SetDead()
@@ -192,7 +193,7 @@ float ARSCharacterPlayer::GetAimingPitch() const
 
 void ARSCharacterPlayer::AttachWeapon()
 {
-	const FName& SocketName = bIsWeaponEquipped_ ? *GunHandSocketName : *GunSpineSocketName;
+	const FName& SocketName = bIsWeaponEquipped ? *GunHandSocketName : *GunSpineSocketName;
 
 	Weapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
 }
@@ -201,23 +202,23 @@ void ARSCharacterPlayer::UpdateCameraMovement(float DeltaTIme)
 {
 	bool bFinished = true;
 
-	float NewArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetArmLength_, DeltaTIme, CameraInterpSpeed);
-	if (false == FMath::IsNearlyEqual(NewArmLength, TargetArmLength_, 0.1f))
+	float NewArmLength = FMath::FInterpTo(CameraBoom->TargetArmLength, TargetArmLength, DeltaTIme, CameraInterpSpeed);
+	if (false == FMath::IsNearlyEqual(NewArmLength, TargetArmLength, 0.1f))
 		bFinished = false;
 	CameraBoom->TargetArmLength = NewArmLength;
 
-	FRotator NewRotation = FMath::RInterpTo(FollowCamera->GetRelativeRotation(), FollowCameraTargetRotation_, DeltaTIme, CameraInterpSpeed);
-	if (false == FollowCamera->GetRelativeRotation().Equals(FollowCameraTargetRotation_, 0.1f))
+	FRotator NewRotation = FMath::RInterpTo(FollowCamera->GetRelativeRotation(), FollowCameraTargetRotation, DeltaTIme, CameraInterpSpeed);
+	if (false == FollowCamera->GetRelativeRotation().Equals(FollowCameraTargetRotation, 0.1f))
 		bFinished = false;
 	FollowCamera->SetRelativeRotation(NewRotation);
 
-	FVector NewLocation = FMath::VInterpTo(FollowCamera->GetRelativeLocation(), FollowCameraTargetLocation_, DeltaTIme, CameraInterpSpeed);
-	if (false == FollowCamera->GetRelativeLocation().Equals(FollowCameraTargetLocation_, 0.1f))
+	FVector NewLocation = FMath::VInterpTo(FollowCamera->GetRelativeLocation(), FollowCameraTargetLocation, DeltaTIme, CameraInterpSpeed);
+	if (false == FollowCamera->GetRelativeLocation().Equals(FollowCameraTargetLocation, 0.1f))
 		bFinished = false;
 	FollowCamera->SetRelativeLocation(NewLocation);
 
 	if (bFinished)
-		bIsCameraTransitioning_ = false;
+		bIsCameraTransitioning = false;
 }
 
 void ARSCharacterPlayer::ShoulderMove(const FInputActionValue& Value)
@@ -260,10 +261,10 @@ void ARSCharacterPlayer::AimingLook(const FInputActionValue& Value)
 
 void ARSCharacterPlayer::Fire()
 {
-	if (CurrentAmmo_ == 0)
+	if (CurrentAmmo == 0)
 		return;
 
-	SetCurrentAmmo(CurrentAmmo_ - 1);
+	SetCurrentAmmo(CurrentAmmo - 1);
 
 	ProcessAttackCommand();
 }
@@ -301,17 +302,17 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 void ARSCharacterPlayer::FindItem(class ARSItem* InItem)
 {
 	ensureMsgf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
-	ensureMsgf(false == CurrentItems_.Contains(InItem), TEXT("Duplicate item is found in ARSCharacterPlayer::FindItem()"));
+	ensureMsgf(false == CurrentItems.Contains(InItem), TEXT("Duplicate item is found in ARSCharacterPlayer::FindItem()"));
 
-	CurrentItems_.Add(InItem);
+	CurrentItems.Add(InItem);
 }
 
 void ARSCharacterPlayer::LoseItem(class ARSItem* InItem)
 {
 	ensureMsgf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
-	ensureMsgf(CurrentItems_.Contains(InItem), TEXT("InItem is not found in ARSCharacterPlayer::LoseItem()"));
+	ensureMsgf(CurrentItems.Contains(InItem), TEXT("InItem is not found in ARSCharacterPlayer::LoseItem()"));
 
-	CurrentItems_.Remove(InItem);
+	CurrentItems.Remove(InItem);
 }
 
 void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
@@ -321,9 +322,9 @@ void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
 	{
 		InHUDWidget->SetMaxHp(Stat->GetCharacterStat().MaxHp);
 		InHUDWidget->UpdateHpBar(Stat->GetCurrentHp());
-		InHUDWidget->SetMaxAmmo(MaxAmmo_);
-		InHUDWidget->UpdateOwningAmmo(CurrentAmmo_);
-		InHUDWidget->UpdateOwningMoney(CurrentMoney_);
+		InHUDWidget->SetMaxAmmo(MaxAmmo);
+		InHUDWidget->UpdateOwningAmmo(CurrentAmmo);
+		InHUDWidget->UpdateOwningMoney(CurrentMoney);
 
 		Stat->OnHpChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateHpBar);
 		OnOwningAmmonChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateOwningAmmo);
@@ -333,13 +334,13 @@ void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
 
 void ARSCharacterPlayer::TakeItem()
 {
-	if (CurrentItems_.Num() == 0)
+	if (CurrentItems.Num() == 0)
 		return;
 
-	ARSItem* item = CurrentItems_[0];
+	ARSItem* item = CurrentItems[0];
 	URSItemData* itemData = item->GetItemData();
 
-	TakeItemActions_[(uint8)itemData->GetType()].ItemDelegate.ExecuteIfBound(itemData);
+	TakeItemActions[(uint8)itemData->GetType()].ItemDelegate.ExecuteIfBound(itemData);
 	item->ConsumeItem(); // Automatically call LoseItem() after consuming
 }
 
@@ -347,7 +348,7 @@ void ARSCharacterPlayer::PickUpAmmoItem(class URSItemData* InItemData)
 {
 	if (URSAmmoItemData* AmmoItemData = Cast<URSAmmoItemData>(InItemData))
 	{
-		SetCurrentAmmo(CurrentAmmo_ + AmmoItemData->GetAmmoAmount());
+		SetCurrentAmmo(CurrentAmmo + AmmoItemData->GetAmmoAmount());
 	}
 }
 
@@ -363,13 +364,8 @@ void ARSCharacterPlayer::PickUpMoneyItem(class URSItemData* InItemData)
 {
 	if (URSMoneyItemData* MoneyItemData = Cast<URSMoneyItemData>(InItemData))
 	{
-		SetCurrentMoney(CurrentMoney_ + MoneyItemData->GetMoneyValue());
+		SetCurrentMoney(CurrentMoney + MoneyItemData->GetMoneyValue());
 	}
-}
-
-void ARSCharacterPlayer::PickUpStoryItem(class URSItemData* InItemData)
-{
-
 }
 
 void ARSCharacterPlayer::ShowAimingUI()
