@@ -6,12 +6,13 @@
 #include "GameFramework/Character.h"
 #include "RSCharacterBase.generated.h"
 
-// Forward Declarations
+
 class UAnimMontage;
 class URSAttackActionData;
 class URSCharacterControlData;
 class URSCharacterStatComponent;
 class USoundCue;
+
 
 UENUM(BlueprintType)
 enum class ECharacterControlType : uint8 
@@ -20,10 +21,7 @@ enum class ECharacterControlType : uint8
 	Aiming		UMETA(DisplayName = "Aiming View")
 };
 
-/**
- * Base character class for all characters in the game.
- * Provides core functionality for combat, stats, and UI integration.
- */
+
 UCLASS(Abstract, BlueprintType, Blueprintable)
 class PROJECT_RS_API ARSCharacterBase : public ACharacter
 {
@@ -32,65 +30,58 @@ class PROJECT_RS_API ARSCharacterBase : public ACharacter
 public:
 	ARSCharacterBase();
 
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-	virtual void ProcessAttackCommand();
-
-	UFUNCTION(BlueprintPure, Category = "Stats")
-	FORCEINLINE URSCharacterStatComponent* GetStatComponent() const { return Stat; }
-
+	//~ Start AActor interface
 	virtual void PostInitializeComponents() override;
+	//~ End AActor interface
 
 protected:
-	// ========== Character Control System ==========
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Control", meta = (AllowPrivateAccess = "true"))
-	TMap<ECharacterControlType, TObjectPtr<URSCharacterControlData>> CharacterControlManager;
+	UFUNCTION(Server, Reliable)
+	void ServerRPCProcessAttack();
+
+	UFUNCTION(NetMulticast,Unreliable)
+	void MulticastRPCProcessAttack();
+
+	FORCEINLINE URSCharacterStatComponent* GetStat() const { return Stat; }
 
 	virtual void SetCharacterControlData(const URSCharacterControlData* ControlData);
+	TMap<ECharacterControlType, TObjectPtr<URSCharacterControlData>> GetCharacterControlManager() const { return CharacterControlManager; }
 
-	// ========== Combat System ==========
-	// Combat Data & Assets
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAnimMontage> AttackActionMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Animation", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UAnimMontage> DeadMontage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Data", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<URSAttackActionData> AttackActionData;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Sound")
-	TObjectPtr<USoundCue> AttackSound;
-
-
-	// Combat Methods
+	virtual void ProcessAttackCommand();
 	virtual void AttackActionBegin();
 	virtual void AttackActionEnd(UAnimMontage* TargetMontage, bool IsProperlyEnded);
 	virtual void NotifyAttackActionEnd();
 	virtual void SetComboCheckTimer();
 	virtual void ComboCheck();
 	void PlayAttackSound();
-
-	// Damage & Death System
+	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void SetDead();
 	virtual void PlayDeadAnimation();
-	float GetDeadEventDelayTime() const { return DeadEventDelayTime_; }
+	float GetDeadEventDelayTime() const { return DeadEventDelayTime; }
 
-	// ========== Stat System ==========
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats", meta = (AllowPrivateAccess = "true"))
+private:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Control", Meta = (AllowPrivateAccess = "true"))
+	TMap<ECharacterControlType, TObjectPtr<URSCharacterControlData>> CharacterControlManager;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stats", Meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<URSCharacterStatComponent> Stat;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Animation", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimMontage> AttackActionMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Animation", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UAnimMontage> DeadMontage;
 
-// ================================================================================================
-// PRIVATE IMPLEMENTATION
-// ================================================================================================
-private:
-	// ========== Combat Internal State ==========
-	int32	CurrentCombo_			= 0;
-	bool	HasNextAttackCommand_	= false;
-	bool	IsDead_					= false;
-	float	DeadEventDelayTime_		= 8.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat|Data", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<URSAttackActionData> AttackActionData;
 
-	FTimerHandle ComboTimerHandle_;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat|Sound", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USoundCue> AttackSound;
+
+	FTimerHandle ComboTimerHandle;
+
+	int32 CurrentCombo = 0;
+	bool HasNextAttackCommand = false;
+	bool bIsDead = false;
+	float DeadEventDelayTime = 8.0f;
 };

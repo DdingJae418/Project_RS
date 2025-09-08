@@ -3,11 +3,20 @@
 
 #include "CharacterStat/RSCharacterStatComponent.h"
 #include "GameData/RSGameSingleton.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values for this component's properties
 URSCharacterStatComponent::URSCharacterStatComponent()
 {
 	bWantsInitializeComponent = true;
+	SetIsReplicated(true);
+}
+
+void URSCharacterStatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(URSCharacterStatComponent, CurrentHp);
 }
 
 void URSCharacterStatComponent::SetCharacterStat(ECharacterName InCharacterName)

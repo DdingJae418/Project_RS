@@ -35,7 +35,7 @@ void ARSCharacterNonPlayer::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	Stat->SetCharacterStat(CharacterName);
+	GetStat()->SetCharacterStat(CharacterName);
 	SetupHpBarComponent();
 }
 
@@ -73,7 +73,7 @@ float ARSCharacterNonPlayer::GetAIDetectRange() const
 
 float ARSCharacterNonPlayer::GetAIAttackRange() const
 {
-	return Stat->GetCharacterStat().AttackRange;
+	return GetStat()->GetCharacterStat().AttackRange;
 }
 
 float ARSCharacterNonPlayer::GetAITurnSpeed() const
@@ -110,7 +110,7 @@ void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
 
 	const FVector CharacterLocation = GetActorLocation();
 	const FVector ForwardVector		= GetActorForwardVector();
-	const float AttackRange			= Stat->GetCharacterStat().AttackRange;
+	const float AttackRange			= GetStat()->GetCharacterStat().AttackRange;
 	
 	const FVector CapsuleCenter		= CharacterLocation + ForwardVector * (AttackRange * 0.5f);
 	const float CapsuleRadius		= 50.0f;
@@ -134,7 +134,7 @@ void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
 			if (OverlapResult.GetActor() && OverlapResult.GetActor() != this)
 			{
 				FDamageEvent DamageEvent;
-				OverlapResult.GetActor()->TakeDamage(Stat->GetCharacterStat().Attack, DamageEvent, GetController(), this);
+				OverlapResult.GetActor()->TakeDamage(GetStat()->GetCharacterStat().Attack, DamageEvent, GetController(), this);
 			}
 		}
 	}
@@ -173,7 +173,7 @@ float ARSCharacterNonPlayer::TakeDamage(float DamageAmount, struct FDamageEvent 
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	if (HpBar != nullptr && HpBar->bHiddenInGame && KINDA_SMALL_NUMBER < Stat->GetCurrentHp())
+	if (HpBar != nullptr && HpBar->bHiddenInGame && KINDA_SMALL_NUMBER < GetStat()->GetCurrentHp())
 	{
 		HpBar->SetHiddenInGame(false);
 	}
@@ -186,9 +186,9 @@ void ARSCharacterNonPlayer::SetupWidget(class UUserWidget* InUserWidget)
 	URSHpBarWidget* HpBarWidget = Cast<URSHpBarWidget>(InUserWidget);
 	if (HpBarWidget)
 	{
-		HpBarWidget->SetMaxHp(Stat->GetCharacterStat().MaxHp);
-		HpBarWidget->UpdateHpBar(Stat->GetCurrentHp());
-		Stat->OnHpChanged.AddUObject(HpBarWidget, &URSHpBarWidget::UpdateHpBar);
+		HpBarWidget->SetMaxHp(GetStat()->GetCharacterStat().MaxHp);
+		HpBarWidget->UpdateHpBar(GetStat()->GetCurrentHp());
+		GetStat()->OnHpChanged.AddUObject(HpBarWidget, &URSHpBarWidget::UpdateHpBar);
 	}
 }
 

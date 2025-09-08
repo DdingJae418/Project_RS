@@ -65,28 +65,28 @@ void ARSCharacterBase::SetCharacterControlData(const class URSCharacterControlDa
 
 void ARSCharacterBase::ProcessAttackCommand()
 {
-	if (IsDead_)
+	if (bIsDead)
 		return;
 
-	if (0 == CurrentCombo_)
+	if (0 == CurrentCombo)
 	{
 		AttackActionBegin();
 		return;
 	}
 
-	if (false == ComboTimerHandle_.IsValid())
+	if (false == ComboTimerHandle.IsValid())
 	{
-		HasNextAttackCommand_ = false;
+		HasNextAttackCommand = false;
 	}
 	else
 	{
-		HasNextAttackCommand_ = true;
+		HasNextAttackCommand = true;
 	}
 }
 
 void ARSCharacterBase::AttackActionBegin()
 {
-	CurrentCombo_ = 1;
+	CurrentCombo = 1;
 
 	const float AttackSpeedRate = Stat->GetCharacterStat().AttackSpeed;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
@@ -96,15 +96,15 @@ void ARSCharacterBase::AttackActionBegin()
 	EndDelegate.BindUObject(this, &ARSCharacterBase::AttackActionEnd);
 	AnimInstance->Montage_SetEndDelegate(EndDelegate, AttackActionMontage);
 
-	ComboTimerHandle_.Invalidate();
+	ComboTimerHandle.Invalidate();
 	SetComboCheckTimer();
 }
 
 void ARSCharacterBase::AttackActionEnd(class UAnimMontage* TargetMontage, bool IsProperlyEnded)
 {
-	ensureMsgf(0 != CurrentCombo_, TEXT("Current Combo must be greater than 0."));
+	ensureMsgf(0 != CurrentCombo, TEXT("Current Combo must be greater than 0."));
 
-	CurrentCombo_ = 0;
+	CurrentCombo = 0;
 
 	NotifyAttackActionEnd();
 }
@@ -116,29 +116,29 @@ void ARSCharacterBase::NotifyAttackActionEnd()
 
 void ARSCharacterBase::SetComboCheckTimer()
 {
-	int32 ComboIndex = CurrentCombo_ - 1;
+	int32 ComboIndex = CurrentCombo - 1;
 	ensureMsgf(AttackActionData->EffectiveFrameCount.IsValidIndex(ComboIndex), TEXT("Invalid combo index : %d"), ComboIndex);
 
 	const float AttackSpeedRate = Stat->GetCharacterStat().AttackSpeed;
 	float ComboEffectiveTime = (AttackActionData->EffectiveFrameCount[ComboIndex] / AttackActionData->FrameRate) / AttackSpeedRate;
 	if (0.0f < ComboEffectiveTime)
 	{
-		GetWorld()->GetTimerManager().SetTimer(ComboTimerHandle_, this, &ARSCharacterBase::ComboCheck, ComboEffectiveTime, false);
+		GetWorld()->GetTimerManager().SetTimer(ComboTimerHandle, this, &ARSCharacterBase::ComboCheck, ComboEffectiveTime, false);
 	}
 }
 
 void ARSCharacterBase::ComboCheck()
 {
-	ComboTimerHandle_.Invalidate();
-	if (HasNextAttackCommand_)
+	ComboTimerHandle.Invalidate();
+	if (HasNextAttackCommand)
 	{
 		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 
-		CurrentCombo_ = (AttackActionData->MaxComboCount == CurrentCombo_) ? 1 : CurrentCombo_ + 1;
-		FName NextSection = *FString::Printf(TEXT("%s%d"), *AttackActionData->MontageSectionNamePrefix, CurrentCombo_);
+		CurrentCombo = (AttackActionData->MaxComboCount == CurrentCombo) ? 1 : CurrentCombo + 1;
+		FName NextSection = *FString::Printf(TEXT("%s%d"), *AttackActionData->MontageSectionNamePrefix, CurrentCombo);
 		AnimInstance->Montage_JumpToSection(NextSection, AttackActionMontage);
 		SetComboCheckTimer();
-		HasNextAttackCommand_ = false;
+		HasNextAttackCommand = false;
 	}
 }
 
@@ -166,7 +166,7 @@ float ARSCharacterBase::TakeDamage(float DamageAmount, struct FDamageEvent const
 
 void ARSCharacterBase::SetDead()
 {
-	IsDead_ = true;
+	bIsDead = true;
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 	PlayDeadAnimation();
 	SetActorEnableCollision(false);

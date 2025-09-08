@@ -17,26 +17,31 @@ class PROJECT_RS_API URSCharacterStatComponent : public UActorComponent
 	GENERATED_BODY()
 
 public:	
-	// Sets default values for this component's properties
 	URSCharacterStatComponent();
 
-
-public:
-	FOnHpZeroDelegate OnHpZero;
-	FOnHpChangedDelegate OnHpChanged;
-
-	void SetCharacterStat(ECharacterName InCharacterName);
 	FORCEINLINE FRSCharacterStat GetCharacterStat() const { return CharacterStat; }
 	FORCEINLINE float GetCurrentHp() const { return CurrentHp; }
+
+	void SetCharacterStat(ECharacterName InCharacterName);
 	float ApplyDamage(float InDamage);
 	void RestoreHp(float InHp) { SetHp(CurrentHp + InHp); }
 
-protected:
-	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat)
+	FOnHpZeroDelegate OnHpZero;
+	FOnHpChangedDelegate OnHpChanged;
+
+	//~ Start UActorComponent interface
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	//~ End UActorComponent interface
+
+private:
+	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = "true"))
 	FRSCharacterStat CharacterStat;
 
-	UPROPERTY(Transient, VisibleInstanceOnly, Category = Stat)
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentHp, VisibleInstanceOnly, Category = Stat, Meta = (AllowPrivateAccess = "true"))
 	float CurrentHp;
+
+	UFUNCTION()
+	void OnRep_CurrentHp() { SetHp(CurrentHp); }
 		
 	void SetHp(float NewHp);
 };

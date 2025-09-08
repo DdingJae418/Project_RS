@@ -54,7 +54,7 @@ void ARSCharacterPlayer::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	Stat->SetCharacterStat(ECharacterName::Player);
+	GetStat()->SetCharacterStat(ECharacterName::Player);
 }
 
 void ARSCharacterPlayer::PossessedBy(AController* NewController)
@@ -121,12 +121,12 @@ void ARSCharacterPlayer::ChangeCharacterControl()
 
 void ARSCharacterPlayer::SetCharacterControl(ECharacterControlType NewCharacterControlType)
 {
-	if (!IsLocallyControlled())
+	if (false == IsLocallyControlled())
 	{
 		return;
 	}
 
-	URSCharacterControlData* NewCharacterControl = CharacterControlManager[NewCharacterControlType];
+	const URSCharacterControlData* NewCharacterControl = GetCharacterControlManager()[NewCharacterControlType];
 	check(NewCharacterControl);
 
 	SetCharacterControlData(NewCharacterControl);
@@ -279,13 +279,13 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
 	const FVector Start = FollowCamera->GetComponentLocation();
-	const FVector End = Start + FollowCamera->GetForwardVector() * Stat->GetCharacterStat().AttackRange;
+	const FVector End = Start + FollowCamera->GetForwardVector() * GetStat()->GetCharacterStat().AttackRange;
 	
 	bool HitDetected = GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, CCHANNEL_RSACTION, Params);
 	if (HitDetected)
 	{
 		FDamageEvent DamageEvent;
-		OutHitResult.GetActor()->TakeDamage(Stat->GetCharacterStat().Attack, DamageEvent, GetController(), this);
+		OutHitResult.GetActor()->TakeDamage(GetStat()->GetCharacterStat().Attack, DamageEvent, GetController(), this);
 
 		OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
 	}
@@ -323,13 +323,13 @@ void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
 {
 	if (URSHUDWidget* InHUDWidget = Cast<URSHUDWidget>(InUserWidget))
 	{
-		InHUDWidget->SetMaxHp(Stat->GetCharacterStat().MaxHp);
-		InHUDWidget->UpdateHpBar(Stat->GetCurrentHp());
+		InHUDWidget->SetMaxHp(GetStat()->GetCharacterStat().MaxHp);
+		InHUDWidget->UpdateHpBar(GetStat()->GetCurrentHp());
 		InHUDWidget->SetMaxAmmo(MaxAmmo);
 		InHUDWidget->UpdateOwningAmmo(CurrentAmmo);
 		InHUDWidget->UpdateOwningMoney(CurrentMoney);
 
-		Stat->OnHpChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateHpBar);
+		GetStat()->OnHpChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateHpBar);
 		OnOwningAmmonChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateOwningAmmo);
 		OnOwningMoneyChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateOwningMoney);
 	}
@@ -363,7 +363,7 @@ void ARSCharacterPlayer::PickUpMedicalItem(class URSItemData* InItemData)
 {
 	if (URSMedicalItemData* MedicalItemData = Cast<URSMedicalItemData>(InItemData))
 	{
-		Stat->RestoreHp(MedicalItemData->GetRestoreAmount());
+		GetStat()->RestoreHp(MedicalItemData->GetRestoreAmount());
 	}
 }
 
