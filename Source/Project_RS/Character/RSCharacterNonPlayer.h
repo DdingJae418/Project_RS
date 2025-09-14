@@ -7,7 +7,6 @@
 #include "Enums/ECharacterName.h"
 #include "Interface/RSCharacterAIInterface.h"
 #include "Interface/RSAnimationAttackInterface.h"
-#include "Interface/RSWidgetInterface.h"
 #include "RSCharacterNonPlayer.generated.h"
 
 // Forward Declarations
@@ -18,72 +17,41 @@ class URSWidgetComponent;
  * Extends base character with AI behavior, patrol systems, and automated combat.
  */
 UCLASS(BlueprintType, Blueprintable)
-class PROJECT_RS_API ARSCharacterNonPlayer : public ARSCharacterBase, public IRSCharacterAIInterface, public IRSAnimationAttackInterface, public IRSWidgetInterface
+class PROJECT_RS_API ARSCharacterNonPlayer : public ARSCharacterBase, public IRSCharacterAIInterface, public IRSAnimationAttackInterface
 {
 	GENERATED_BODY()
 
-// ================================================================================================
-// PUBLIC INTERFACE
-// ================================================================================================
 public:
-	// Constructor & Core Overrides
 	ARSCharacterNonPlayer();
+
+	//~ Start AActor interface
 	virtual void PostInitializeComponents() override;
-
-	// Character Interface
-	UFUNCTION(BlueprintPure, Category = "Character")
-	ECharacterName GetCharacterName() const { return CharacterName; }
-
-	// UI Interface
-	UFUNCTION(BlueprintPure, Category = "UI")
-	FORCEINLINE URSWidgetComponent* GetHpBarComponent() const { return HpBar; }
-
-
-// ================================================================================================
-// PROTECTED IMPLEMENTATION
-// ================================================================================================
+	virtual void PostNetInit() override;
+	//~ End AActor interface
+	 
 protected:
-	// ========== Character Data ==========
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character", meta = (AllowPrivateAccess = "true"))
 	ECharacterName CharacterName;
 
-	// ========== Combat System ==========
-	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	//~ Start ARSCharacterBase interface
 	virtual void SetDead() override;
 	virtual void NotifyAttackActionEnd() override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;;
+	//~ End ARSCharacterBase interface
 
-	// IRSAnimationAttackInterface Implementation
+	//~ Start IRSAnimationAttackInterface interface
 	virtual void AttackHitCheck_Implementation() override;
+	//~ End IRSAnimationAttackInterface interface
 
-	// ========== UI System ==========
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<URSWidgetComponent> HpBar;
-
-	// IRSWidgetInterface Implementation
-	virtual void SetupWidget(UUserWidget* InUserWidget) override;
-
-	// ========== AI System (IRSCharacterAIInterface Implementation) ==========
-	// AI Configuration
+	//~ Start IRSCharacterAIInterface interface
 	virtual float GetAIPatrolRadius() const override;
 	virtual float GetAIDetectRange() const override;
 	virtual float GetAIAttackRange() const override;
 	virtual float GetAITurnSpeed() const override;
-
-	// AI Combat Interface
 	virtual void SetAIAttackDelegate(const FAICharacterAttackFinished& InDelegate) override;
 	virtual void AttackByAI() override;
+	//~ End IRSCharacterAIInterface interface
 
 private:
-	// ========== UI Internal Methods ==========
-	void SetupHpBarComponent();
-
-public:
-
-
-// ================================================================================================
-// PRIVATE IMPLEMENTATION
-// ================================================================================================
-private:
-	// ========== AI Internal State ==========
 	FAICharacterAttackFinished OnAttackFinished;
 };

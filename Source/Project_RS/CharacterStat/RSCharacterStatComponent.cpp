@@ -9,7 +9,7 @@
 URSCharacterStatComponent::URSCharacterStatComponent()
 {
 	bWantsInitializeComponent = true;
-	SetIsReplicated(true);
+	SetIsReplicatedByDefault(true);
 }
 
 void URSCharacterStatComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

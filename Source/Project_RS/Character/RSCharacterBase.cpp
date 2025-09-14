@@ -11,6 +11,8 @@
 #include "CharacterStat/RSCharacterStatComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
+#include "UI/RSWidgetComponent.h"
+#include "UI/RSHpBarWidget.h"
 
 // Sets default values
 ARSCharacterBase::ARSCharacterBase()
@@ -44,6 +46,13 @@ ARSCharacterBase::ARSCharacterBase()
 	Stat = CreateDefaultSubobject<URSCharacterStatComponent>(TEXT("Stat"));
 	Stat->OnHpZero.AddUObject(this, &ARSCharacterBase::SetDead);
 
+	// Widget Component
+	HpBar = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
+	HpBar->SetIsReplicated(true);
+	HpBar->SetWidgetSpace(EWidgetSpace::Screen);
+	HpBar->SetDrawSize(FVector2D(100.f, 10.f));
+	HpBar->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HpBar->SetHiddenInGame(true);
 }
 
 void ARSCharacterBase::PostInitializeComponents()
@@ -52,25 +61,19 @@ void ARSCharacterBase::PostInitializeComponents()
 }
 
 
-void ARSCharacterBase::SetCharacterControlData(const class URSCharacterControlData* CharacterControlData)
+void ARSCharacterBase::PostNetInit()
 {
-	// Pawn
-	bUseControllerRotationYaw = CharacterControlData->bUseControllerRotationYaw;
-
-	// CharacterMovement
-	GetCharacterMovement()->bOrientRotationToMovement = CharacterControlData->bOrientRotationToMovement;
-	GetCharacterMovement()->bUseControllerDesiredRotation = CharacterControlData->bUseControllerDesiredRotation;
-	GetCharacterMovement()->RotationRate = CharacterControlData->RotationRate;
+	Super::PostNetInit();
 }
 
-void ARSCharacterBase::ProcessAttackCommand()
+void ARSCharacterBase::ServerRPCProcessAttack_Implementation()
 {
 	if (bIsDead)
 		return;
 
 	if (0 == CurrentCombo)
 	{
-		AttackActionBegin();
+		MulticastRPCProcessAttack();
 		return;
 	}
 
@@ -82,6 +85,30 @@ void ARSCharacterBase::ProcessAttackCommand()
 	{
 		HasNextAttackCommand = true;
 	}
+}
+
+void ARSCharacterBase::MulticastRPCProcessAttack_Implementation()
+{
+	AttackActionBegin();
+}
+
+void ARSCharacterBase::MulticastRPCSetHpBarVisibility_Implementation(bool bVisible)
+{
+	if (HpBar)
+	{
+		HpBar->SetHiddenInGame(!bVisible);
+	}
+}
+
+void ARSCharacterBase::SetCharacterControlData(const class URSCharacterControlData* CharacterControlData)
+{
+	// Pawn
+	bUseControllerRotationYaw = CharacterControlData->bUseControllerRotationYaw;
+
+	// CharacterMovement
+	GetCharacterMovement()->bOrientRotationToMovement = CharacterControlData->bOrientRotationToMovement;
+	GetCharacterMovement()->bUseControllerDesiredRotation = CharacterControlData->bUseControllerDesiredRotation;
+	GetCharacterMovement()->RotationRate = CharacterControlData->RotationRate;
 }
 
 void ARSCharacterBase::AttackActionBegin()
@@ -179,4 +206,30 @@ void ARSCharacterBase::PlayDeadAnimation()
 	AnimInstance->Montage_Play(DeadMontage, 1.0f);
 }
 
+void ARSCharacterBase::SetupHpBarComponent()
+{
+	const FName SocketName = TEXT("headSocket");
 
+	if (GetMesh() && GetMesh()->DoesSocketExist(SocketName))
+	{
+		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, SocketName);
+		HpBar->SetWorldLocation(GetMesh()->GetSocketLocation(SocketName) + FVector(0.0f, 0.0f, 30.0f));
+	}
+	else
+	{
+		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform);
+		FVector CharacterTop = GetActorLocation() + FVector(0.0f, 0.0f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 50.0f);
+		HpBar->SetWorldLocation(CharacterTop);
+	}
+}
+
+void ARSCharacterBase::SetupWidget(class UUserWidget* InUserWidget)
+{
+	URSHpBarWidget* HpBarWidget = Cast<URSHpBarWidget>(InUserWidget);
+	if (HpBarWidget)
+	{
+		HpBarWidget->SetMaxHp(GetStatComponent()->GetCharacterStat().MaxHp);
+		HpBarWidget->UpdateHpBar(GetStatComponent()->GetCurrentHp());
+		GetStatComponent()->OnHpChanged.AddUObject(HpBarWidget, &URSHpBarWidget::UpdateHpBar);
+	}
+}

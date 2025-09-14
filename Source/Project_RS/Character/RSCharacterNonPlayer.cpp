@@ -9,48 +9,42 @@
 #include "Engine/DamageEvents.h"
 #include "Engine/OverlapResult.h"
 #include "Physics/RSCollision.h"
-#include "UI/RSWidgetComponent.h"
-#include "UI/RSHpBarWidget.h"
 #include "Components/CapsuleComponent.h"
+#include "UI/RSWidgetComponent.h"
 
 ARSCharacterNonPlayer::ARSCharacterNonPlayer()
 {
 	AIControllerClass = ARSAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-
-	// Widget Component
-	HpBar = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
-	static ConstructorHelpers::FClassFinder<UUserWidget> HpBarWidgetRef(TEXT("/Game/Project_RS/UI/WBP_HpBar.WBP_HpBar_C"));
-	if (HpBarWidgetRef.Class)
-	{
-		HpBar->SetWidgetClass(HpBarWidgetRef.Class);
-		HpBar->SetWidgetSpace(EWidgetSpace::Screen);
-		HpBar->SetDrawSize(FVector2D(100.f, 10.f));
-		HpBar->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		HpBar->SetHiddenInGame(true);
-	}
 }
 
 void ARSCharacterNonPlayer::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	GetStat()->SetCharacterStat(CharacterName);
+	GetStatComponent()->SetCharacterStat(CharacterName);
 	SetupHpBarComponent();
+}
+
+void ARSCharacterNonPlayer::PostNetInit()
+{
+	Super::PostNetInit();
 }
 
 void ARSCharacterNonPlayer::SetDead()
 {
 	Super::SetDead();
 
+	if (HasAuthority())
+	{
+		MulticastRPCSetHpBarVisibility(false);
+	}
+
 	ARSAIController* RSAIController = Cast<ARSAIController>(GetController());
 	if (RSAIController)
 	{
 		RSAIController->StopAI();
-	}
-
-	if (HpBar != nullptr)
-		HpBar->SetHiddenInGame(true);
+	}		
 
 	FTimerHandle DeadTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(DeadTimerHandle, FTimerDelegate::CreateLambda(
@@ -73,7 +67,7 @@ float ARSCharacterNonPlayer::GetAIDetectRange() const
 
 float ARSCharacterNonPlayer::GetAIAttackRange() const
 {
-	return GetStat()->GetCharacterStat().AttackRange;
+	return GetStatComponent()->GetCharacterStat().AttackRange;
 }
 
 float ARSCharacterNonPlayer::GetAITurnSpeed() const
@@ -89,8 +83,7 @@ void ARSCharacterNonPlayer::SetAIAttackDelegate(const FAICharacterAttackFinished
 void ARSCharacterNonPlayer::AttackByAI()
 {
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-
-	ProcessAttackCommand();
+	ServerRPCProcessAttack();
 }
 
 void ARSCharacterNonPlayer::NotifyAttackActionEnd()
@@ -101,110 +94,86 @@ void ARSCharacterNonPlayer::NotifyAttackActionEnd()
 	OnAttackFinished.ExecuteIfBound();
 }
 
-void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
-{
-	PlayAttackSound();
-
-	TArray<FOverlapResult> OutOverlapResults;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
-
-	const FVector CharacterLocation = GetActorLocation();
-	const FVector ForwardVector		= GetActorForwardVector();
-	const float AttackRange			= GetStat()->GetCharacterStat().AttackRange;
-	
-	const FVector CapsuleCenter		= CharacterLocation + ForwardVector * (AttackRange * 0.5f);
-	const float CapsuleRadius		= 50.0f;
-	const float CapsuleHalfHeight	= AttackRange * 0.5f;
-	const FQuat CapsuleRotation		= FQuat::FindBetweenVectors(FVector::UpVector, ForwardVector);
-	FCollisionShape CapsuleShape	= FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight);
-
-	bool HitDetected = GetWorld()->OverlapMultiByChannel(
-		OutOverlapResults,
-		CapsuleCenter,
-		CapsuleRotation,
-		CCHANNEL_RSACTION,
-		CapsuleShape,
-		Params
-	);
-
-	if (HitDetected)
-	{
-		for (const FOverlapResult& OverlapResult : OutOverlapResults)
-		{
-			if (OverlapResult.GetActor() && OverlapResult.GetActor() != this)
-			{
-				FDamageEvent DamageEvent;
-				OverlapResult.GetActor()->TakeDamage(GetStat()->GetCharacterStat().Attack, DamageEvent, GetController(), this);
-			}
-		}
-	}
-
-
-#if ENABLE_DRAW_DEBUG
-	FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
-	
-	DrawDebugCapsule(
-		GetWorld(),
-		CapsuleCenter,
-		CapsuleHalfHeight,
-		CapsuleRadius,
-		CapsuleRotation,
-		DrawColor,
-		false,
-		5.0f,
-		0,
-		2.0f
-	);
-
-	if (HitDetected)
-	{
-		for (const FOverlapResult& OverlapResult : OutOverlapResults)
-		{
-			if (OverlapResult.GetActor() && OverlapResult.GetActor() != this)
-			{
-				DrawDebugPoint(GetWorld(), OverlapResult.GetActor()->GetActorLocation(), 15.0f, FColor::Yellow, false, 5.0f);
-			}
-		}
-	}
-#endif
-}
-
 float ARSCharacterNonPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	if (HpBar != nullptr && HpBar->bHiddenInGame && KINDA_SMALL_NUMBER < GetStat()->GetCurrentHp())
+	if (HasAuthority() && GetHpBarComponent()->bHiddenInGame && KINDA_SMALL_NUMBER < GetStatComponent()->GetCurrentHp())
+
 	{
-		HpBar->SetHiddenInGame(false);
+		MulticastRPCSetHpBarVisibility(true);
 	}
 
 	return DamageAmount;
 }
 
-void ARSCharacterNonPlayer::SetupWidget(class UUserWidget* InUserWidget)
+void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
 {
-	URSHpBarWidget* HpBarWidget = Cast<URSHpBarWidget>(InUserWidget);
-	if (HpBarWidget)
-	{
-		HpBarWidget->SetMaxHp(GetStat()->GetCharacterStat().MaxHp);
-		HpBarWidget->UpdateHpBar(GetStat()->GetCurrentHp());
-		GetStat()->OnHpChanged.AddUObject(HpBarWidget, &URSHpBarWidget::UpdateHpBar);
-	}
-}
+	PlayAttackSound();
 
-void ARSCharacterNonPlayer::SetupHpBarComponent()
-{
-	const FName SocketName = TEXT("headSocket");
+	if (HasAuthority())
+	{
+		TArray<FOverlapResult> OutOverlapResults;
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
-	if (GetMesh() && GetMesh()->DoesSocketExist(SocketName))
-	{
-		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform, SocketName);
-		HpBar->SetWorldLocation(GetMesh()->GetSocketLocation(SocketName) + FVector(0.0f, 0.0f, 30.0f));
-	}
-	else
-	{
-		HpBar->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepWorldTransform);
-		FVector CharacterTop = GetActorLocation() + FVector(0.0f, 0.0f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight() + 50.0f);
-		HpBar->SetWorldLocation(CharacterTop);
+		const FVector CharacterLocation = GetActorLocation();
+		const FVector ForwardVector = GetActorForwardVector();
+		const float AttackRange = GetStatComponent()->GetCharacterStat().AttackRange;
+
+		const FVector CapsuleCenter = CharacterLocation + ForwardVector * (AttackRange * 0.5f);
+		const float CapsuleRadius = 50.0f;
+		const float CapsuleHalfHeight = AttackRange * 0.5f;
+		const FQuat CapsuleRotation = FQuat::FindBetweenVectors(FVector::UpVector, ForwardVector);
+		FCollisionShape CapsuleShape = FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight);
+
+		bool HitDetected = GetWorld()->OverlapMultiByChannel(
+			OutOverlapResults,
+			CapsuleCenter,
+			CapsuleRotation,
+			CCHANNEL_RSACTION,
+			CapsuleShape,
+			Params
+		);
+
+		if (HitDetected)
+		{
+			for (const FOverlapResult& OverlapResult : OutOverlapResults)
+			{
+				if (OverlapResult.GetActor() && OverlapResult.GetActor() != this)
+				{
+					FDamageEvent DamageEvent;
+					OverlapResult.GetActor()->TakeDamage(GetStatComponent()->GetCharacterStat().Attack, DamageEvent, GetController(), this);
+				}
+			}
+		}
+
+
+#if ENABLE_DRAW_DEBUG
+		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+
+		DrawDebugCapsule(
+			GetWorld(),
+			CapsuleCenter,
+			CapsuleHalfHeight,
+			CapsuleRadius,
+			CapsuleRotation,
+			DrawColor,
+			false,
+			5.0f,
+			0,
+			2.0f
+		);
+
+		if (HitDetected)
+		{
+			for (const FOverlapResult& OverlapResult : OutOverlapResults)
+			{
+				if (OverlapResult.GetActor() && OverlapResult.GetActor() != this)
+				{
+					DrawDebugPoint(GetWorld(), OverlapResult.GetActor()->GetActorLocation(), 15.0f, FColor::Yellow, false, 5.0f);
+				}
+			}
+		}
+#endif
 	}
 }

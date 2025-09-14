@@ -23,6 +23,8 @@
 #include "Player/RSPlayerController.h"
 #include "Net/UnrealNetwork.h"
 #include "Algo/MinElement.h"
+#include "UI/RSWidgetComponent.h"
+
 
 ARSCharacterPlayer::ARSCharacterPlayer()
 {
@@ -54,7 +56,13 @@ void ARSCharacterPlayer::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	GetStat()->SetCharacterStat(ECharacterName::Player);
+	GetStatComponent()->SetCharacterStat(ECharacterName::Player);
+	SetupHpBarComponent();
+}
+
+void ARSCharacterPlayer::PostNetInit()
+{
+	Super::PostNetInit();
 }
 
 void ARSCharacterPlayer::PossessedBy(AController* NewController)
@@ -83,6 +91,26 @@ void ARSCharacterPlayer::Tick(float DeltaTime)
 		UpdateCameraMovement(DeltaTime);
 }
 
+void ARSCharacterPlayer::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ARSCharacterPlayer, bIsWeaponEquipped);
+	DOREPLIFETIME(ARSCharacterPlayer, bIsAiming);
+}
+
+float ARSCharacterPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (HasAuthority() && GetHpBarComponent()->bHiddenInGame && KINDA_SMALL_NUMBER < GetStatComponent()->GetCurrentHp())
+	{
+		MulticastRPCSetHpBarVisibility(true);
+	}
+
+	return DamageAmount;
+}
+
 void ARSCharacterPlayer::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -108,14 +136,29 @@ void ARSCharacterPlayer::ChangeCharacterControl()
 	{
 		SetCharacterControl(ECharacterControlType::Aiming);
 		ShowAimingUI();
-		bIsAiming			= true;
-		bIsWeaponEquipped	= true; // Automatically equip weapon when aiming
+		if (HasAuthority())
+		{
+			bIsAiming = true;
+			bIsWeaponEquipped = true; // Automatically equip weapon when aiming
+		}
+		else
+		{
+			ServerRPCSetAiming(true);
+			ServerRPCSetWeaponEquipped(true);
+		}
 	}
 	else if (ECharacterControlType::Aiming == CurrentCharacterControlType)
 	{
 		SetCharacterControl(ECharacterControlType::Shoulder);
 		HideAimingUI();
-		bIsAiming = false;
+		if (HasAuthority())
+		{
+			bIsAiming = false;
+		}
+		else
+		{
+			ServerRPCSetAiming(false);
+		}
 	}
 }
 
@@ -148,7 +191,7 @@ void ARSCharacterPlayer::SetCharacterControlData(const class URSCharacterControl
 {
 	Super::SetCharacterControlData(CharacterControlData);
 
-	TargetArmLength			= CharacterControlData->TargetArmLength;
+	TargetArmLength				= CharacterControlData->TargetArmLength;
 	FollowCameraTargetRotation	= CharacterControlData->RelativeRotation;
 	FollowCameraTargetLocation	= CharacterControlData->RelativeLocation;
 
@@ -163,14 +206,28 @@ void ARSCharacterPlayer::SetCharacterControlData(const class URSCharacterControl
 
 void ARSCharacterPlayer::SetupWeapon()
 {
-	if (true == bIsAiming) return;
+	if (true == bIsAiming) 
+		return;
 
-	bIsWeaponEquipped = !bIsWeaponEquipped;
+	bool bNewWeaponState = !bIsWeaponEquipped;
+	if (HasAuthority())
+	{
+		bIsWeaponEquipped = bNewWeaponState;
+	}
+	else
+	{
+		ServerRPCSetWeaponEquipped(bNewWeaponState);
+	}
 }
 
 void ARSCharacterPlayer::SetDead()
 {
 	Super::SetDead();
+
+	if (HasAuthority() && false == IsLocallyControlled())
+	{
+		MulticastRPCSetHpBarVisibility(false);
+	}
 
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 	if (PlayerController)
@@ -267,41 +324,43 @@ void ARSCharacterPlayer::Fire()
 		return;
 
 	SetCurrentAmmo(CurrentAmmo - 1);
-
-	ProcessAttackCommand();
+	ServerRPCProcessAttack();
 }
 
 void ARSCharacterPlayer::AttackHitCheck_Implementation()
 {
 	PlayAttackSound();
 
-	FHitResult OutHitResult;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
-
-	const FVector Start = FollowCamera->GetComponentLocation();
-	const FVector End = Start + FollowCamera->GetForwardVector() * GetStat()->GetCharacterStat().AttackRange;
-	
-	bool HitDetected = GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, CCHANNEL_RSACTION, Params);
-	if (HitDetected)
+	if (HasAuthority())
 	{
-		FDamageEvent DamageEvent;
-		OutHitResult.GetActor()->TakeDamage(GetStat()->GetCharacterStat().Attack, DamageEvent, GetController(), this);
+		FHitResult OutHitResult;
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
 
-		OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
-	}
+		const FVector Start = FollowCamera->GetComponentLocation();
+		const FVector End = Start + FollowCamera->GetForwardVector() * GetStatComponent()->GetCharacterStat().AttackRange;
+
+		bool HitDetected = GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, CCHANNEL_RSACTION, Params);
+		if (HitDetected)
+		{
+			FDamageEvent DamageEvent;
+			OutHitResult.GetActor()->TakeDamage(GetStatComponent()->GetCharacterStat().Attack, DamageEvent, GetController(), this);
+
+			OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
+		}
 
 #if ENABLE_DRAW_DEBUG
 
-	FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
-	DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 5.0f, 0, 0.5f);
-	if (HitDetected)
-	{
-		DrawDebugPoint(GetWorld(), OutHitResult.ImpactPoint, 15.0f, FColor::Yellow, false, 5.0f);
-	}
+		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+		DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 5.0f, 0, 0.5f);
+		if (HitDetected)
+		{
+			DrawDebugPoint(GetWorld(), OutHitResult.ImpactPoint, 15.0f, FColor::Yellow, false, 5.0f);
+		}
 #endif
+	}
 }
 
-void ARSCharacterPlayer::FindItem(class ARSItem* InItem)
+void ARSCharacterPlayer::FindItem(ARSItem* InItem)
 {
 	checkf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
 	ensureMsgf(false == CurrentItems.Contains(InItem), TEXT("Duplicate item is found in ARSCharacterPlayer::FindItem()"));
@@ -310,7 +369,25 @@ void ARSCharacterPlayer::FindItem(class ARSItem* InItem)
 	CurrentItems.Add(InItem);
 }
 
-void ARSCharacterPlayer::LoseItem(class ARSItem* InItem)
+void ARSCharacterPlayer::LoseItem(ARSItem* InItem)
+{
+	checkf(InItem, TEXT("..."));
+	ensureMsgf(CurrentItems.Contains(InItem), TEXT("..."));
+	checkf(HasAuthority(), TEXT("..."));
+
+	CurrentItems.Remove(InItem);
+}
+
+void ARSCharacterPlayer::FindItem(ARSItem* InItem)
+{
+	checkf(InItem, TEXT("..."));
+	ensureMsgf(false == CurrentItems.Contains(InItem), TEXT("..."));
+	checkf(HasAuthority(), TEXT("..."));
+
+	CurrentItems.Add(InItem);
+}
+
+void ARSCharacterPlayer::LoseItem(ARSItem* InItem)
 {
 	checkf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
 	ensureMsgf(CurrentItems.Contains(InItem), TEXT("InItem is not found in ARSCharacterPlayer::LoseItem()"));
@@ -319,17 +396,19 @@ void ARSCharacterPlayer::LoseItem(class ARSItem* InItem)
 	CurrentItems.Remove(InItem);
 }
 
-void ARSCharacterPlayer::SetupWidget(class UUserWidget* InUserWidget)
+void ARSCharacterPlayer::SetupWidget(UUserWidget* InUserWidget)
 {
+	Super::SetupWidget(InUserWidget);
+
 	if (URSHUDWidget* InHUDWidget = Cast<URSHUDWidget>(InUserWidget))
 	{
-		InHUDWidget->SetMaxHp(GetStat()->GetCharacterStat().MaxHp);
-		InHUDWidget->UpdateHpBar(GetStat()->GetCurrentHp());
+		InHUDWidget->SetMaxHp(GetStatComponent()->GetCharacterStat().MaxHp);
+		InHUDWidget->UpdateHpBar(GetStatComponent()->GetCurrentHp());
 		InHUDWidget->SetMaxAmmo(MaxAmmo);
 		InHUDWidget->UpdateOwningAmmo(CurrentAmmo);
 		InHUDWidget->UpdateOwningMoney(CurrentMoney);
 
-		GetStat()->OnHpChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateHpBar);
+		GetStatComponent()->OnHpChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateHpBar);
 		OnOwningAmmonChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateOwningAmmo);
 		OnOwningMoneyChanged.AddUObject(InHUDWidget, &URSHUDWidget::UpdateOwningMoney);
 	}
@@ -340,7 +419,7 @@ void ARSCharacterPlayer::ServerRPCTakeItem_Implementation()
 	if (CurrentItems.IsEmpty())
 		return;
 
-	TArray<ARSItem*> ValidItems = CurrentItems.FilterByPredicate([](const ARSItem* Item) { return IsValid(Item); });
+	TArray<ARSItem*> ValidItems = CurrentItems.FilterByPredicate([](const ARSItem* Item) { return ::IsValid(Item); });
 	if (ValidItems.IsEmpty())
 		return;
 
@@ -351,7 +430,7 @@ void ARSCharacterPlayer::ServerRPCTakeItem_Implementation()
 	item->ConsumeItem(); // Automatically call LoseItem() after consuming
 }
 
-void ARSCharacterPlayer::PickUpAmmoItem(class URSItemData* InItemData)
+void ARSCharacterPlayer::PickUpAmmoItem(URSItemData* InItemData)
 {
 	if (URSAmmoItemData* AmmoItemData = Cast<URSAmmoItemData>(InItemData))
 	{
@@ -359,15 +438,15 @@ void ARSCharacterPlayer::PickUpAmmoItem(class URSItemData* InItemData)
 	}
 }
 
-void ARSCharacterPlayer::PickUpMedicalItem(class URSItemData* InItemData)
+void ARSCharacterPlayer::PickUpMedicalItem(URSItemData* InItemData)
 {
 	if (URSMedicalItemData* MedicalItemData = Cast<URSMedicalItemData>(InItemData))
 	{
-		GetStat()->RestoreHp(MedicalItemData->GetRestoreAmount());
+		GetStatComponent()->RestoreHp(MedicalItemData->GetRestoreAmount());
 	}
 }
 
-void ARSCharacterPlayer::PickUpMoneyItem(class URSItemData* InItemData)
+void ARSCharacterPlayer::PickUpMoneyItem(URSItemData* InItemData)
 {
 	if (URSMoneyItemData* MoneyItemData = Cast<URSMoneyItemData>(InItemData))
 	{
@@ -401,5 +480,16 @@ void ARSCharacterPlayer::HideAimingUI()
 	ensureMsgf(AimingPointWidget->IsInViewport(), TEXT("AimingPointWidget is not in viewport in ARSCharacterPlayer::HideAimingUI()"));
 
 	AimingPointWidget->SetVisibility(ESlateVisibility::Hidden);
+}
+
+void ARSCharacterPlayer::ServerRPCSetWeaponEquipped_Implementation(bool bEquipped)
+{
+	bIsWeaponEquipped = bEquipped;
+}
+
+void ARSCharacterPlayer::ServerRPCSetAiming_Implementation(bool bNewAiming)
+{
+	bIsAiming = bNewAiming;
+	bUseControllerRotationYaw = bNewAiming;
 }
 

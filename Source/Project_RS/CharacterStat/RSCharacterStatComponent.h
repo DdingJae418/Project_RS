@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "GameData/RSCharacterStat.h"
 #include "Enums/ECharacterName.h"
+#include "Project_RS.h"
 #include "RSCharacterStatComponent.generated.h"
 
 DECLARE_MULTICAST_DELEGATE(FOnHpZeroDelegate);
@@ -41,7 +42,11 @@ private:
 	float CurrentHp;
 
 	UFUNCTION()
-	void OnRep_CurrentHp() { SetHp(CurrentHp); }
+	void OnRep_CurrentHp() 
+	{
+		RS_SUBLOG(LogRSNetwork, Log, TEXT("OnRep_CurrentHp: %f"), CurrentHp);
+		SetHp(CurrentHp); 
+	}
 		
 	void SetHp(float NewHp);
 };

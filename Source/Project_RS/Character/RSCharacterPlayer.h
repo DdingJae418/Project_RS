@@ -9,13 +9,13 @@
 #include "Interface/RSWidgetInterface.h"
 #include "RSCharacterPlayer.generated.h"
 
+class ARSItem;
 class UInputAction;
 class UStaticMeshComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class URSCharacterControlData;
 class URSItemData;
-class ARSItem;
 struct FInputActionValue;
 
 DECLARE_MULTICAST_DELEGATE_TwoParams(FOnHitTargetDelegate, AActor* /*HitTarget*/, const FHitResult&);
@@ -39,7 +39,7 @@ const FString GunHandSocketName		= TEXT("gun_hand");
 
 
 UCLASS(BlueprintType, Blueprintable)
-class PROJECT_RS_API ARSCharacterPlayer : public ARSCharacterBase, public IRSAnimationAttackInterface, public IRSCharacterItemInterface, public IRSWidgetInterface
+class PROJECT_RS_API ARSCharacterPlayer : public ARSCharacterBase, public IRSAnimationAttackInterface, public IRSCharacterItemInterface
 {
 	GENERATED_BODY()
 
@@ -59,6 +59,10 @@ public:
 	FOnHitTargetDelegate OnHitTarget;
 	FOnOwningMoneyChangeDelegate OnOwningMoneyChanged;
 
+	//~ Start AActor interface
+	virtual void PostNetInit() override;
+	//~ End AActor interface
+
 	//~ Start IRSCharacterItemInterface interface
 	virtual void FindItem(ARSItem* InItem) override;
 	virtual void LoseItem(ARSItem* InItem) override;
@@ -70,69 +74,19 @@ public:
 
 protected:
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<USpringArmComponent> CameraBoom;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UCameraComponent> FollowCamera;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera", meta = (AllowPrivateAccess = "true"))
-	float CameraInterpSpeed;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UStaticMeshComponent> Weapon;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TObjectPtr<class UUserWidget> AimingPointWidget;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> JumpAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> ChangeControlAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> ShoulderMoveAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> ShoulderLookAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> AimingMoveAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> AimingLookAction;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> SetupWeaponAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> FireAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UInputAction> TakeItemAction;
-
-	void UpdateCameraMovement(float DeltaTime);
-
-	void SetupWeapon();
-	virtual void SetDead() override;
-
-	void ChangeCharacterControl();
-	void SetCharacterControl(ECharacterControlType NewCharacterControlType);
-	virtual void SetCharacterControlData(const URSCharacterControlData* ControlData) override;
-
-	void ShoulderMove(const FInputActionValue& Value);
-	void ShoulderLook(const FInputActionValue& Value);
-	void AimingMove(const FInputActionValue& Value);
-	void AimingLook(const FInputActionValue& Value);
-	void Fire();
-
 	//~ Start AActor interface
 	virtual void BeginPlay() override;
 	virtual void PostInitializeComponents() override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void Tick(float DeltaTime) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	//~ End AActor interface
+
+	//~ Start ARSCharacterBase interface
+	virtual void SetCharacterControlData(const URSCharacterControlData* ControlData) override;
+	virtual void SetDead() override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	//~ End ARSCharacterBase interface
 
 	//~ Start IRSAnimationAttackInterface interface
 	virtual void AttackHitCheck_Implementation() override;
@@ -140,10 +94,81 @@ protected:
 
 private:
 	UFUNCTION(Server, Reliable)
-	void ServerRPCTakeItem();	
+	void ServerRPCTakeItem();
+
+	UFUNCTION(Server, Reliable)
+	void ServerRPCSetWeaponEquipped(bool bEquipped);
+
+	UFUNCTION(Server, Reliable)
+	void ServerRPCSetAiming(bool bNewAiming);	
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<USpringArmComponent> CameraBoom;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCameraComponent> FollowCamera;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Camera", Meta = (AllowPrivateAccess = "true"))
+	float CameraInterpSpeed;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Weapon", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> Weapon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UUserWidget> AimingPointWidget;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> JumpAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> ChangeControlAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> ShoulderMoveAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> ShoulderLookAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> AimingMoveAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> AimingLookAction;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> SetupWeaponAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> FireAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input", Meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UInputAction> TakeItemAction;
+
+	UPROPERTY(Replicated)
+	uint8 bIsWeaponEquipped : 1;
+	
+	UPROPERTY(Replicated)
+	uint8 bIsAiming : 1;
 
 	UPROPERTY()
 	TArray<FTakeItemDelegateWrapper> TakeItemActions;
+
+	UPROPERTY()
+	TArray<ARSItem*> CurrentItems;
+
+	void UpdateCameraMovement(float DeltaTime);
+
+	void ChangeCharacterControl();
+	void SetCharacterControl(ECharacterControlType NewCharacterControlType);
+
+	void ShoulderMove(const FInputActionValue& Value);
+	void ShoulderLook(const FInputActionValue& Value);
+	void AimingMove(const FInputActionValue& Value);
+	void AimingLook(const FInputActionValue& Value);
+	void Fire();
+
+	void SetupWeapon();
 
 	void PickUpAmmoItem(URSItemData* InItemData);
 	void PickUpMedicalItem(URSItemData* InItemData);
@@ -157,18 +182,12 @@ private:
 
 	FOnOwningAmmoChangeDelegate OnOwningAmmonChanged;
 
-	UPROPERTY()
-	TArray<ARSItem*> CurrentItems;
-
 	ECharacterControlType CurrentCharacterControlType;
-	bool bIsWeaponEquipped;
-	bool bIsAiming;
-
 	FRotator FollowCameraTargetRotation;
 	FVector	FollowCameraTargetLocation;
+
 	bool bIsCameraTransitioning;
 	float TargetArmLength;
-
 	const uint8 MaxAmmo = 60;
 	uint8 CurrentAmmo	= MaxAmmo;
 	uint32 CurrentMoney = 0;
