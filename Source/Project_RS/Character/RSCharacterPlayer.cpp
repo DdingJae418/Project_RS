@@ -18,6 +18,7 @@
 #include "CharacterStat/RSCharacterStatComponent.h"
 #include "Enums/ECharacterName.h"
 #include "UI/RSHUDWidget.h"
+#include "Game/RSGameState.h"
 #include "Interface/RSGameInterface.h"
 #include "GameFramework/GameModeBase.h"
 #include "Player/RSPlayerController.h"
@@ -238,10 +239,13 @@ void ARSCharacterPlayer::SetDead()
 	{
 		DisableInput(PlayerController);
 
-		IRSGameInterface* RSGameMode = Cast<IRSGameInterface>(GetWorld()->GetAuthGameMode());
-		if (RSGameMode)
+		if (ARSGameState* RSGameState = GetWorld()->GetGameState<ARSGameState>())
 		{
-			RSGameMode->OnPlayerDead();
+			ARSPlayerController* RSPlayerController = Cast<ARSPlayerController>(GetController());
+			if (RSPlayerController)
+			{
+				RSGameState->OnPlayerDead(RSPlayerController);
+			}
 		}
 	}
 }
@@ -361,14 +365,14 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 			OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
 		}
 
-#if ENABLE_DRAW_DEBUG
-		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
-		DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 5.0f, 0, 0.5f);
-		if (HitDetected)
-		{
-			DrawDebugPoint(GetWorld(), OutHitResult.ImpactPoint, 15.0f, FColor::Yellow, false, 5.0f);
-		}
-#endif
+//#if ENABLE_DRAW_DEBUG
+//		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+//		DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 5.0f, 0, 0.5f);
+//		if (HitDetected)
+//		{
+//			DrawDebugPoint(GetWorld(), OutHitResult.ImpactPoint, 15.0f, FColor::Yellow, false, 5.0f);
+//		}
+//#endif
 	}
 }
 
@@ -525,13 +529,16 @@ bool ARSCharacterPlayer::ServerRPCReportHit_Validate(const FHitReportData& HitDa
 	if (MaxAllowedAttackDistance < DistanceToTarget)
 		return false;
 
-	// Validate hit position vs actual target position
-	FVector CurrentTargetLocation			= HitData.HitTarget->GetActorLocation();
-	float HitPositionDiscrepancy			= FVector::Dist(HitData.HitLocation, CurrentTargetLocation);
-	float MaxAllowedHitPositionDiscrepancy	= 200.0f; // 2 meters tolerance
+	// Validate hit position vs actual target position (only for characters)
+	if (HitData.HitTarget->IsA<ARSCharacterBase>())
+	{
+		FVector CurrentTargetLocation			= HitData.HitTarget->GetActorLocation();
+		float HitPositionDiscrepancy			= FVector::Dist(HitData.HitLocation, CurrentTargetLocation);
+		float MaxAllowedHitPositionDiscrepancy	= 200.0f; // 2 meters tolerance
 
-	if (MaxAllowedHitPositionDiscrepancy < HitPositionDiscrepancy)
-		return false;
+		if (MaxAllowedHitPositionDiscrepancy < HitPositionDiscrepancy)
+			return false;
+	}
 
 	return true;
 }

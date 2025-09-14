@@ -4,14 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "Interface/RSGameInterface.h"
 #include "RSGamePlayGameMode.generated.h"
 
 /**
- * 
+ *
  */
 UCLASS()
-class PROJECT_RS_API ARSGamePlayGameMode : public AGameModeBase, public IRSGameInterface
+class PROJECT_RS_API ARSGamePlayGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	
@@ -20,7 +19,6 @@ public:
 
 	//~Start of Actor interface
 	virtual void BeginPlay() override;
-	virtual void Tick(float DeltaSeconds) override;
 	//~End of Actor interface
 	
 	//~Start of GameModeBase interface
@@ -30,20 +28,8 @@ public:
 	virtual void StartPlay() override;
 	//~End of GameModeBase interface
 
-	//~Start of RSGameInterface interface
-	virtual void OnPlayerDead() override;
-	virtual bool IsGameCleared() override;
-	//~End of RSGameInterface interface
 
 protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = Game)
-	float TimeLimit;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Game)
-	float CurrentPlayTime;
-
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = Game)
-	uint8 bIsCleared : 1;
 
 private:
 	UPROPERTY()

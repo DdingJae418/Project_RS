@@ -150,32 +150,32 @@ void ARSCharacterNonPlayer::AttackHitCheck_Implementation()
 		}
 
 
-#if ENABLE_DRAW_DEBUG
-		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
-
-		DrawDebugCapsule(
-			GetWorld(),
-			CapsuleCenter,
-			CapsuleHalfHeight,
-			CapsuleRadius,
-			CapsuleRotation,
-			DrawColor,
-			false,
-			5.0f,
-			0,
-			2.0f
-		);
-
-		if (HitDetected)
-		{
-			for (const FOverlapResult& OverlapResult : OutOverlapResults)
-			{
-				if (OverlapResult.GetActor() && OverlapResult.GetActor() != this)
-				{
-					DrawDebugPoint(GetWorld(), OverlapResult.GetActor()->GetActorLocation(), 15.0f, FColor::Yellow, false, 5.0f);
-				}
-			}
-		}
-#endif
+//#if ENABLE_DRAW_DEBUG
+//		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+//
+//		DrawDebugCapsule(
+//			GetWorld(),
+//			CapsuleCenter,
+//			CapsuleHalfHeight,
+//			CapsuleRadius,
+//			CapsuleRotation,
+//			DrawColor,
+//			false,
+//			5.0f,
+//			0,
+//			2.0f
+//		);
+//
+//		if (HitDetected)
+//		{
+//			for (const FOverlapResult& OverlapResult : OutOverlapResults)
+//			{
+//				if (OverlapResult.GetActor() && OverlapResult.GetActor() != this)
+//				{
+//					DrawDebugPoint(GetWorld(), OverlapResult.GetActor()->GetActorLocation(), 15.0f, FColor::Yellow, false, 5.0f);
+//				}
+//			}
+//		}
+//#endif
 	}
 }
