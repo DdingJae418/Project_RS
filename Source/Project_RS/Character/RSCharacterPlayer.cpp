@@ -27,6 +27,15 @@
 
 
 ARSCharacterPlayer::ARSCharacterPlayer()
+	: CameraInterpSpeed{ 6.0f }
+	, bIsWeaponEquipped {false}
+	, bIsAiming{ false }
+	, MaxAmmo{ 30 }
+	, CurrentAmmo{ MaxAmmo }
+	, CurrentMoney{ 0 }
+	, CurrentCharacterControlType {ECharacterControlType::Shoulder}
+	, bIsCameraTransitioning{ false }
+	, TargetArmLength{ 300.0f }
 {
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
@@ -38,13 +47,6 @@ ARSCharacterPlayer::ARSCharacterPlayer()
 
 	Weapon = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Weapon"));
 	Weapon->SetupAttachment(GetMesh(), *GunSpineSocketName);
-
-	CurrentCharacterControlType		= ECharacterControlType::Shoulder;
-	bIsWeaponEquipped				= false;
-	bIsAiming						= false;
-	bIsCameraTransitioning			= false;
-	CameraInterpSpeed				= 6.0f;
-	TargetArmLength					= 300.0f;
 
 	// Item Action
 	TakeItemActions.Add(FTakeItemDelegateWrapper(FOnTakeItemDelegate::CreateUObject(this, &ARSCharacterPlayer::PickUpAmmoItem)));
@@ -97,6 +99,8 @@ void ARSCharacterPlayer::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 
 	DOREPLIFETIME(ARSCharacterPlayer, bIsWeaponEquipped);
 	DOREPLIFETIME(ARSCharacterPlayer, bIsAiming);
+	DOREPLIFETIME_CONDITION(ARSCharacterPlayer, CurrentAmmo, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(ARSCharacterPlayer, CurrentMoney, COND_OwnerOnly);
 }
 
 float ARSCharacterPlayer::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
@@ -323,15 +327,18 @@ void ARSCharacterPlayer::Fire()
 	if (CurrentAmmo == 0)
 		return;
 
-	SetCurrentAmmo(CurrentAmmo - 1);
-	ServerRPCProcessAttack();
+	if (IsLocallyControlled())
+	{
+		ProcessAttackCombo();
+		ServerRPCFireRequest();
+	}
 }
 
 void ARSCharacterPlayer::AttackHitCheck_Implementation()
 {
 	PlayAttackSound();
 
-	if (HasAuthority())
+	if (IsLocallyControlled())
 	{
 		FHitResult OutHitResult;
 		FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
@@ -342,14 +349,19 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 		bool HitDetected = GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, CCHANNEL_RSACTION, Params);
 		if (HitDetected)
 		{
-			FDamageEvent DamageEvent;
-			OutHitResult.GetActor()->TakeDamage(GetStatComponent()->GetCharacterStat().Attack, DamageEvent, GetController(), this);
+			FHitReportData HitData(
+				OutHitResult.GetActor(),
+				OutHitResult.ImpactPoint,
+				GetStatComponent()->GetCharacterStat().Attack,
+				GetActorLocation()
+			);
+
+			ServerRPCReportHit(HitData);
 
 			OnHitTarget.Broadcast(OutHitResult.GetActor(), OutHitResult);
 		}
 
 #if ENABLE_DRAW_DEBUG
-
 		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
 		DrawDebugLine(GetWorld(), Start, End, DrawColor, false, 5.0f, 0, 0.5f);
 		if (HitDetected)
@@ -365,24 +377,6 @@ void ARSCharacterPlayer::FindItem(ARSItem* InItem)
 	checkf(InItem, TEXT("InItem is null in ARSCharacterPlayer::FindItem()"));
 	ensureMsgf(false == CurrentItems.Contains(InItem), TEXT("Duplicate item is found in ARSCharacterPlayer::FindItem()"));
 	checkf(HasAuthority(), TEXT("FindItem must be called only in server."));
-
-	CurrentItems.Add(InItem);
-}
-
-void ARSCharacterPlayer::LoseItem(ARSItem* InItem)
-{
-	checkf(InItem, TEXT("..."));
-	ensureMsgf(CurrentItems.Contains(InItem), TEXT("..."));
-	checkf(HasAuthority(), TEXT("..."));
-
-	CurrentItems.Remove(InItem);
-}
-
-void ARSCharacterPlayer::FindItem(ARSItem* InItem)
-{
-	checkf(InItem, TEXT("..."));
-	ensureMsgf(false == CurrentItems.Contains(InItem), TEXT("..."));
-	checkf(HasAuthority(), TEXT("..."));
 
 	CurrentItems.Add(InItem);
 }
@@ -432,14 +426,21 @@ void ARSCharacterPlayer::ServerRPCTakeItem_Implementation()
 
 void ARSCharacterPlayer::PickUpAmmoItem(URSItemData* InItemData)
 {
+	checkf(InItemData, TEXT("InItemData is null in ARSCharacterPlayer::PickUpAmmoItem()"));
+	checkf(HasAuthority(), TEXT("PickUpAmmoItem must be called only in server."));
+
 	if (URSAmmoItemData* AmmoItemData = Cast<URSAmmoItemData>(InItemData))
 	{
-		SetCurrentAmmo(CurrentAmmo + AmmoItemData->GetAmmoAmount());
+		CurrentAmmo = FMath::Clamp<uint8>(CurrentAmmo + AmmoItemData->GetAmmoAmount(), 0, MaxAmmo);
+		OnRep_CurrentAmmo();
 	}
 }
 
 void ARSCharacterPlayer::PickUpMedicalItem(URSItemData* InItemData)
 {
+	checkf(InItemData, TEXT("InItemData is null in ARSCharacterPlayer::PickUpMedicalItem()"));
+	checkf(HasAuthority(), TEXT("PickUpMedicalItem must be called only in server."));
+
 	if (URSMedicalItemData* MedicalItemData = Cast<URSMedicalItemData>(InItemData))
 	{
 		GetStatComponent()->RestoreHp(MedicalItemData->GetRestoreAmount());
@@ -448,9 +449,13 @@ void ARSCharacterPlayer::PickUpMedicalItem(URSItemData* InItemData)
 
 void ARSCharacterPlayer::PickUpMoneyItem(URSItemData* InItemData)
 {
+	checkf(InItemData, TEXT("InItemData is null in ARSCharacterPlayer::PickUpMoneyItem()"));
+	checkf(HasAuthority(), TEXT("PickUpMoneyItem must be called only in server."));
+
 	if (URSMoneyItemData* MoneyItemData = Cast<URSMoneyItemData>(InItemData))
 	{
-		SetCurrentMoney(CurrentMoney + MoneyItemData->GetMoneyValue());
+		CurrentMoney += MoneyItemData->GetMoneyValue();
+		OnRep_CurrentMoney();
 	}
 }
 
@@ -491,5 +496,60 @@ void ARSCharacterPlayer::ServerRPCSetAiming_Implementation(bool bNewAiming)
 {
 	bIsAiming = bNewAiming;
 	bUseControllerRotationYaw = bNewAiming;
+}
+
+bool ARSCharacterPlayer::ServerRPCFireRequest_Validate()
+{
+	return CurrentAmmo > 0 && !IsDead();
+}
+
+void ARSCharacterPlayer::ServerRPCFireRequest_Implementation()
+{
+	CurrentAmmo--;
+	OnRep_CurrentAmmo();
+
+	PlayAttackAnimationOnly();
+	NotifyAttackAnimationToOtherClients();
+}
+
+bool ARSCharacterPlayer::ServerRPCReportHit_Validate(const FHitReportData& HitData)
+{
+	if (false == ::IsValid(HitData.HitTarget) || HitData.Damage <= 0.0f)
+		return false;
+
+	// Validate attack range
+	float DistanceToTarget			= FVector::Dist(GetActorLocation(), HitData.HitTarget->GetActorLocation());
+	float MaxAttackRange			= GetStatComponent()->GetCharacterStat().AttackRange;
+	float MaxAllowedAttackDistance	= MaxAttackRange * 1.1f;
+
+	if (MaxAllowedAttackDistance < DistanceToTarget)
+		return false;
+
+	// Validate hit position vs actual target position
+	FVector CurrentTargetLocation			= HitData.HitTarget->GetActorLocation();
+	float HitPositionDiscrepancy			= FVector::Dist(HitData.HitLocation, CurrentTargetLocation);
+	float MaxAllowedHitPositionDiscrepancy	= 200.0f; // 2 meters tolerance
+
+	if (MaxAllowedHitPositionDiscrepancy < HitPositionDiscrepancy)
+		return false;
+
+	return true;
+}
+
+void ARSCharacterPlayer::ServerRPCReportHit_Implementation(const FHitReportData& HitData)
+{
+	FDamageEvent DamageEvent;
+	HitData.HitTarget->TakeDamage(HitData.Damage, DamageEvent, GetController(), this);
+}
+
+
+void ARSCharacterPlayer::OnRep_CurrentAmmo()
+{
+	OnOwningAmmonChanged.Broadcast(CurrentAmmo);
+}
+
+void ARSCharacterPlayer::OnRep_CurrentMoney()
+{
+	OnOwningMoneyChanged.Broadcast(CurrentMoney);
 }
 

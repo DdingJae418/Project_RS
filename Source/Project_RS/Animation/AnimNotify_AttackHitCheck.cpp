@@ -3,6 +3,8 @@
 
 #include "Animation/AnimNotify_AttackHitCheck.h"
 #include "Interface/RSAnimationAttackInterface.h"
+#include "Project_RS.h"
+#include "GameFramework/Character.h"
 
 void UAnimNotify_AttackHitCheck::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation, const FAnimNotifyEventReference& EventReference)
 {
@@ -12,6 +14,7 @@ void UAnimNotify_AttackHitCheck::Notify(USkeletalMeshComponent* MeshComp, UAnimS
 	{
 		if (Owner->GetClass()->ImplementsInterface(URSAnimationAttackInterface::StaticClass()))
 		{
+			UE_LOG(LogRSNetwork, Log, TEXT("yes"));
 			IRSAnimationAttackInterface::Execute_AttackHitCheck(Owner);
 		}
 	}

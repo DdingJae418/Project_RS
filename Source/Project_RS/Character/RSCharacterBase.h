@@ -42,11 +42,8 @@ public:
 	//~ End IRSWidgetInterface interface
 
 protected:
-	UFUNCTION(Server, Reliable)
-	void ServerRPCProcessAttack();
-
-	UFUNCTION(NetMulticast,Unreliable)
-	void MulticastRPCProcessAttack();
+	UFUNCTION(Client, Unreliable)
+	void ClientRPCPlayAttackAnimation(ARSCharacterBase* AttackingCharacter);
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastRPCSetHpBarVisibility(bool bVisible);
@@ -57,7 +54,11 @@ protected:
 	virtual void SetCharacterControlData(const URSCharacterControlData* ControlData);
 	TMap<ECharacterControlType, TObjectPtr<URSCharacterControlData>> GetCharacterControlManager() const { return CharacterControlManager; }
 
+
+	void ProcessAttackCombo();
+	void NotifyAttackAnimationToOtherClients();
 	virtual void AttackActionBegin();
+	void PlayAttackAnimationOnly();
 	virtual void AttackActionEnd(UAnimMontage* TargetMontage, bool IsProperlyEnded);
 	virtual void NotifyAttackActionEnd();
 	virtual void SetComboCheckTimer();
@@ -67,6 +68,7 @@ protected:
 	void PlayDeadAnimation();
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	virtual void SetDead();
+	bool IsDead() const { return bIsDead; }
 	float GetDeadEventDelayTime() const { return DeadEventDelayTime; }
 	
 	void SetupHpBarComponent();

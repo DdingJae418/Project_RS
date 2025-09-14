@@ -66,14 +66,14 @@ void ARSCharacterBase::PostNetInit()
 	Super::PostNetInit();
 }
 
-void ARSCharacterBase::ServerRPCProcessAttack_Implementation()
+void ARSCharacterBase::ProcessAttackCombo()
 {
 	if (bIsDead)
 		return;
 
 	if (0 == CurrentCombo)
 	{
-		MulticastRPCProcessAttack();
+		AttackActionBegin();
 		return;
 	}
 
@@ -87,9 +87,46 @@ void ARSCharacterBase::ServerRPCProcessAttack_Implementation()
 	}
 }
 
-void ARSCharacterBase::MulticastRPCProcessAttack_Implementation()
+void ARSCharacterBase::NotifyAttackAnimationToOtherClients()
 {
-	AttackActionBegin();
+	checkf(HasAuthority(), TEXT("NotifyAttackAnimationToOtherClients must be called only in server."));
+
+	UWorld* World = GetWorld();
+	if (!World)
+		return;
+
+	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
+	{
+		APlayerController* PC = Iterator->Get();
+		if (PC && PC->GetPawn())
+		{
+			if (ARSCharacterBase* Character = Cast<ARSCharacterBase>(PC->GetPawn()))
+			{
+				if (Character != this && !Character->IsLocallyControlled())
+				{
+					Character->ClientRPCPlayAttackAnimation(this);
+				}
+			}
+		}
+	}
+}
+
+void ARSCharacterBase::PlayAttackAnimationOnly()
+{
+	const float AttackSpeedRate = Stat->GetCharacterStat().AttackSpeed;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+
+	AnimInstance->Montage_Play(AttackActionMontage, AttackSpeedRate);
+}
+
+void ARSCharacterBase::ClientRPCPlayAttackAnimation_Implementation(ARSCharacterBase* AttackingCharacter)
+{
+	ensureMsgf(AttackingCharacter, TEXT("AttackingCharacter is null in ARSCharacterBase::ClientRPCPlayAttackAnimation()"));
+
+	if (AttackingCharacter)
+	{
+		AttackingCharacter->PlayAttackAnimationOnly();
+	}
 }
 
 void ARSCharacterBase::MulticastRPCSetHpBarVisibility_Implementation(bool bVisible)

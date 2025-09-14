@@ -83,7 +83,9 @@ void ARSCharacterNonPlayer::SetAIAttackDelegate(const FAICharacterAttackFinished
 void ARSCharacterNonPlayer::AttackByAI()
 {
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-	ServerRPCProcessAttack();
+
+	ProcessAttackCombo();
+	NotifyAttackAnimationToOtherClients();
 }
 
 void ARSCharacterNonPlayer::NotifyAttackActionEnd()

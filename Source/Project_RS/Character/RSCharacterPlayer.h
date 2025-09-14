@@ -23,6 +23,38 @@ DECLARE_DELEGATE_OneParam(FOnTakeItemDelegate, URSItemData* /*InItemData*/);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnOwningAmmoChangeDelegate, uint8 /*NewAmmo*/);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnOwningMoneyChangeDelegate, uint32 /*NewMoney*/);
 
+USTRUCT()
+struct FHitReportData
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TObjectPtr<AActor> HitTarget;
+
+	UPROPERTY()
+	FVector HitLocation;
+
+	UPROPERTY()
+	float Damage;
+
+	UPROPERTY()
+	FVector AttackerLocation;
+
+	FHitReportData()
+		: HitTarget(nullptr)
+		, HitLocation(FVector::ZeroVector)
+		, Damage(0.0f)
+		, AttackerLocation(FVector::ZeroVector)
+	{}
+
+	FHitReportData(AActor* InHitTarget, const FVector& InHitLocation, float InDamage, const FVector& InAttackerLocation)
+		: HitTarget(InHitTarget)
+		, HitLocation(InHitLocation)
+		, Damage(InDamage)
+		, AttackerLocation(InAttackerLocation)
+	{}
+};
+
 USTRUCT(BlueprintType)
 struct FTakeItemDelegateWrapper
 {
@@ -100,8 +132,19 @@ private:
 	void ServerRPCSetWeaponEquipped(bool bEquipped);
 
 	UFUNCTION(Server, Reliable)
-	void ServerRPCSetAiming(bool bNewAiming);	
+	void ServerRPCSetAiming(bool bNewAiming);
 
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerRPCFireRequest();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerRPCReportHit(const FHitReportData& HitData);
+
+	UFUNCTION()
+	void OnRep_CurrentAmmo();
+
+	UFUNCTION()
+	void OnRep_CurrentMoney();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera", Meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -151,11 +194,17 @@ private:
 	UPROPERTY(Replicated)
 	uint8 bIsAiming : 1;
 
-	UPROPERTY()
-	TArray<FTakeItemDelegateWrapper> TakeItemActions;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Weapon", Meta = (AllowPrivateAccess = "true"))
+	uint8 MaxAmmo;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentAmmo, VisibleInstanceOnly, Category = "Weapon", Meta = (AllowPrivateAccess = "true"))
+	uint8 CurrentAmmo;
+
+	UPROPERTY(ReplicatedUsing = OnRep_CurrentMoney, VisibleInstanceOnly, Category = "Item", Meta = (AllowPrivateAccess = "true"))
+	uint32 CurrentMoney;
 
 	UPROPERTY()
-	TArray<ARSItem*> CurrentItems;
+	TArray<FTakeItemDelegateWrapper> TakeItemActions;
 
 	void UpdateCameraMovement(float DeltaTime);
 
@@ -174,21 +223,16 @@ private:
 	void PickUpMedicalItem(URSItemData* InItemData);
 	void PickUpMoneyItem(URSItemData* InItemData);
 
-	void SetCurrentAmmo(uint8 NewAmmo) { CurrentAmmo = FMath::Clamp<uint8>(NewAmmo, 0, MaxAmmo); OnOwningAmmonChanged.Broadcast(CurrentAmmo); }
-	void SetCurrentMoney(uint8 NewMoney) { CurrentMoney = NewMoney; OnOwningMoneyChanged.Broadcast(CurrentMoney); }
-
 	void ShowAimingUI();
 	void HideAimingUI();
 
 	FOnOwningAmmoChangeDelegate OnOwningAmmonChanged;
 
+	TArray<ARSItem*> CurrentItems;
 	ECharacterControlType CurrentCharacterControlType;
 	FRotator FollowCameraTargetRotation;
 	FVector	FollowCameraTargetLocation;
 
 	bool bIsCameraTransitioning;
 	float TargetArmLength;
-	const uint8 MaxAmmo = 60;
-	uint8 CurrentAmmo	= MaxAmmo;
-	uint32 CurrentMoney = 0;
 };
