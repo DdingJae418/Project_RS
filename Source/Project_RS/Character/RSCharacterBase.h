@@ -45,8 +45,8 @@ protected:
 	UFUNCTION(Client, Unreliable)
 	void ClientRPCPlayAttackAnimation(ARSCharacterBase* AttackingCharacter);
 
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastRPCSetHpBarVisibility(bool bVisible);
+	UFUNCTION(Client, Reliable)
+	void ClientRPCSetHpBarVisibility(ARSCharacterBase* TargetCharacter, bool bVisible);
 
 	FORCEINLINE URSCharacterStatComponent* GetStatComponent() const { return Stat; }
 	FORCEINLINE URSWidgetComponent* GetHpBarComponent() const { return HpBar; }
@@ -57,6 +57,7 @@ protected:
 
 	void ProcessAttackCombo();
 	void NotifyAttackAnimationToOtherClients();
+	void NotifyHpBarVisibilityToOtherClients(bool bVisible);
 	virtual void AttackActionBegin();
 	void PlayAttackAnimationOnly();
 	virtual void AttackActionEnd(UAnimMontage* TargetMontage, bool IsProperlyEnded);

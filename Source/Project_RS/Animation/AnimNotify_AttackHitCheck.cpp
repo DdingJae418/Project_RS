@@ -14,7 +14,6 @@ void UAnimNotify_AttackHitCheck::Notify(USkeletalMeshComponent* MeshComp, UAnimS
 	{
 		if (Owner->GetClass()->ImplementsInterface(URSAnimationAttackInterface::StaticClass()))
 		{
-			UE_LOG(LogRSNetwork, Log, TEXT("yes"));
 			IRSAnimationAttackInterface::Execute_AttackHitCheck(Owner);
 		}
 	}

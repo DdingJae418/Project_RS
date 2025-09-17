@@ -5,6 +5,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Player/RSPlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "AI/RSAIController.h"
 
 ARSGameState::ARSGameState()
 {
@@ -38,6 +39,10 @@ void ARSGameState::Tick(float DeltaSeconds)
 			if (ARSPlayerController* RSPlayer = Cast<ARSPlayerController>(Iterator->Get()))
 			{
 				RSPlayer->GameClear();
+			}
+			else if (ARSAIController* AICharacter = Cast<ARSAIController>(Iterator->Get()))
+			{
+				AICharacter->StopAI();
 			}
 		}
 	}

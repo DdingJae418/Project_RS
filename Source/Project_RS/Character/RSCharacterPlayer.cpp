@@ -108,10 +108,13 @@ float ARSCharacterPlayer::TakeDamage(float DamageAmount, struct FDamageEvent con
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	if (HasAuthority() && GetHpBarComponent()->bHiddenInGame && KINDA_SMALL_NUMBER < GetStatComponent()->GetCurrentHp())
-	{
-		MulticastRPCSetHpBarVisibility(true);
-	}
+	//RS_LOG(LogRSNetwork, Log, TEXT("1 HP Bar for %s"), *GetName());
+	//if (HasAuthority() && GetHpBarComponent()->bHiddenInGame && KINDA_SMALL_NUMBER < GetStatComponent()->GetCurrentHp())
+	//{
+
+	//	GetHpBarComponent()->SetHiddenInGame(false);
+	//	NotifyHpBarVisibilityToOtherClients(true);
+	//}
 
 	return DamageAmount;
 }
@@ -231,7 +234,11 @@ void ARSCharacterPlayer::SetDead()
 
 	if (HasAuthority() && false == IsLocallyControlled())
 	{
-		MulticastRPCSetHpBarVisibility(false);
+		if (GetHpBarComponent())
+		{
+			GetHpBarComponent()->SetHiddenInGame(true);
+		}
+		NotifyHpBarVisibilityToOtherClients(false);
 	}
 
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
@@ -351,7 +358,7 @@ void ARSCharacterPlayer::AttackHitCheck_Implementation()
 		const FVector End = Start + FollowCamera->GetForwardVector() * GetStatComponent()->GetCharacterStat().AttackRange;
 
 		bool HitDetected = GetWorld()->LineTraceSingleByChannel(OutHitResult, Start, End, CCHANNEL_RSACTION, Params);
-		if (HitDetected)
+		if (HitDetected && ::IsValid(OutHitResult.GetActor()))
 		{
 			FHitReportData HitData(
 				OutHitResult.GetActor(),
@@ -534,7 +541,7 @@ bool ARSCharacterPlayer::ServerRPCReportHit_Validate(const FHitReportData& HitDa
 	{
 		FVector CurrentTargetLocation			= HitData.HitTarget->GetActorLocation();
 		float HitPositionDiscrepancy			= FVector::Dist(HitData.HitLocation, CurrentTargetLocation);
-		float MaxAllowedHitPositionDiscrepancy	= 200.0f; // 2 meters tolerance
+		float MaxAllowedHitPositionDiscrepancy	= 300.0f; // 2 meters tolerance
 
 		if (MaxAllowedHitPositionDiscrepancy < HitPositionDiscrepancy)
 			return false;

@@ -37,7 +37,11 @@ void ARSCharacterNonPlayer::SetDead()
 
 	if (HasAuthority())
 	{
-		MulticastRPCSetHpBarVisibility(false);
+		if (GetHpBarComponent())
+		{
+			GetHpBarComponent()->SetHiddenInGame(true);
+		}
+		NotifyHpBarVisibilityToOtherClients(false);
 	}
 
 	ARSAIController* RSAIController = Cast<ARSAIController>(GetController());
@@ -101,9 +105,12 @@ float ARSCharacterNonPlayer::TakeDamage(float DamageAmount, struct FDamageEvent 
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
 	if (HasAuthority() && GetHpBarComponent()->bHiddenInGame && KINDA_SMALL_NUMBER < GetStatComponent()->GetCurrentHp())
-
 	{
-		MulticastRPCSetHpBarVisibility(true);
+		if (GetHpBarComponent())
+		{
+			GetHpBarComponent()->SetHiddenInGame(false);
+		}
+		NotifyHpBarVisibilityToOtherClients(true);
 	}
 
 	return DamageAmount;

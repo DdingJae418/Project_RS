@@ -129,11 +129,34 @@ void ARSCharacterBase::ClientRPCPlayAttackAnimation_Implementation(ARSCharacterB
 	}
 }
 
-void ARSCharacterBase::MulticastRPCSetHpBarVisibility_Implementation(bool bVisible)
+void ARSCharacterBase::NotifyHpBarVisibilityToOtherClients(bool bVisible)
 {
-	if (HpBar)
+	checkf(HasAuthority(), TEXT("NotifyHpBarVisibilityToOtherClients must be called only in server."));
+
+	UWorld* World = GetWorld();
+	if (!World)
+		return;
+
+	for (FConstPlayerControllerIterator Iterator = World->GetPlayerControllerIterator(); Iterator; ++Iterator)
 	{
-		HpBar->SetHiddenInGame(!bVisible);
+		APlayerController* PC = Iterator->Get();
+		if (PC && PC->GetPawn())
+		{
+			if (ARSCharacterBase* Character = Cast<ARSCharacterBase>(PC->GetPawn()))
+			{
+				Character->ClientRPCSetHpBarVisibility(this, bVisible);
+			}
+		}
+	}
+}
+
+void ARSCharacterBase::ClientRPCSetHpBarVisibility_Implementation(ARSCharacterBase* TargetCharacter, bool bVisible)
+{
+	ensureMsgf(TargetCharacter, TEXT("TargetCharacter is null in ARSCharacterBase::ClientRPCSetHpBarVisibility()"));
+
+	if (TargetCharacter && TargetCharacter->GetHpBarComponent())
+	{
+		TargetCharacter->GetHpBarComponent()->SetHiddenInGame(!bVisible);
 	}
 }
 
