@@ -48,6 +48,7 @@ ARSCharacterBase::ARSCharacterBase()
 
 	// Widget Component
 	HpBar = CreateDefaultSubobject<URSWidgetComponent>(TEXT("Widget"));
+	HpBar->SetupAttachment(GetMesh());
 	HpBar->SetIsReplicated(true);
 	HpBar->SetWidgetSpace(EWidgetSpace::Screen);
 	HpBar->SetDrawSize(FVector2D(100.f, 10.f));
@@ -64,6 +65,22 @@ void ARSCharacterBase::PostInitializeComponents()
 void ARSCharacterBase::PostNetInit()
 {
 	Super::PostNetInit();
+}
+
+void ARSCharacterBase::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (GetNetMode() == NM_ListenServer)
+	{
+		if (HpBar && HpBar->GetWidgetSpace() == EWidgetSpace::Screen)
+		{
+			if (ULocalPlayer* LP = GetWorld()->GetFirstLocalPlayerFromController())
+			{
+				HpBar->SetOwnerPlayer(LP);
+			}
+		}
+	}
 }
 
 void ARSCharacterBase::ProcessAttackCombo()
@@ -144,7 +161,10 @@ void ARSCharacterBase::NotifyHpBarVisibilityToOtherClients(bool bVisible)
 		{
 			if (ARSCharacterBase* Character = Cast<ARSCharacterBase>(PC->GetPawn()))
 			{
-				Character->ClientRPCSetHpBarVisibility(this, bVisible);
+				if (Character != this && false == Character->IsLocallyControlled()) 
+				{
+					Character->ClientRPCSetHpBarVisibility(this, bVisible);
+				}
 			}
 		}
 	}

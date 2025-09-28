@@ -108,13 +108,14 @@ float ARSCharacterPlayer::TakeDamage(float DamageAmount, struct FDamageEvent con
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
-	//RS_LOG(LogRSNetwork, Log, TEXT("1 HP Bar for %s"), *GetName());
-	//if (HasAuthority() && GetHpBarComponent()->bHiddenInGame && KINDA_SMALL_NUMBER < GetStatComponent()->GetCurrentHp())
-	//{
-
-	//	GetHpBarComponent()->SetHiddenInGame(false);
-	//	NotifyHpBarVisibilityToOtherClients(true);
-	//}
+	if (HasAuthority() && GetHpBarComponent()->bHiddenInGame && KINDA_SMALL_NUMBER < GetStatComponent()->GetCurrentHp())
+	{
+		if (false == IsLocallyControlled())
+		{
+			GetHpBarComponent()->SetHiddenInGame(false);
+		}
+		NotifyHpBarVisibilityToOtherClients(true);
+	}
 
 	return DamageAmount;
 }
@@ -541,7 +542,7 @@ bool ARSCharacterPlayer::ServerRPCReportHit_Validate(const FHitReportData& HitDa
 	{
 		FVector CurrentTargetLocation			= HitData.HitTarget->GetActorLocation();
 		float HitPositionDiscrepancy			= FVector::Dist(HitData.HitLocation, CurrentTargetLocation);
-		float MaxAllowedHitPositionDiscrepancy	= 300.0f; // 2 meters tolerance
+		float MaxAllowedHitPositionDiscrepancy	= 300.0f; // 3 meters tolerance
 
 		if (MaxAllowedHitPositionDiscrepancy < HitPositionDiscrepancy)
 			return false;
